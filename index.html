@@ -115,7 +115,7 @@
         .date-top {
             position: absolute;
             top: 44mm;
-            left: 145mm; /* 147mmから左へ2mm移動 */
+            left: 145mm;
             font-size: 6pt;
             font-weight: bold;
             z-index: 2;
@@ -126,7 +126,7 @@
         
         .date-side {
             position: absolute;
-            top: 161mm; /* 158mmから下へ3mm移動 */
+            top: 161mm;
             right: 22mm;
             width: 35mm;
             font-weight: bold;
@@ -183,7 +183,8 @@
         </div>
 
         <button class="btn btn-green" id="printBtn" disabled type="button">② 新聞印刷</button>
-        <button class="btn btn-purple" id="downloadBtn" disabled type="button">③ 音声ダウンロード</button>
+        <!-- 共有メニューが出るようになったので、ボタンの文字を少し変えてもいいかもしれません -->
+        <button class="btn btn-purple" id="downloadBtn" disabled type="button">③ 音声の保存・共有</button>
         <button class="btn btn-red reset-margin" id="resetBtn" type="button">リセット</button>
     </div>
 
@@ -309,15 +310,35 @@
             }, 500); 
         });
 
-        // ③ 音声ダウンロードボタン
-        downloadBtn.addEventListener('click', () => {
+        // ③ 音声の保存・共有ボタン（変更箇所）
+        downloadBtn.addEventListener('click', async () => {
             if (!recordedAudioBlob) return;
             
-            const audioUrl = URL.createObjectURL(recordedAudioBlob);
-            const a = document.createElement('a');
-            a.href = audioUrl;
-            a.download = 'cs.reception.m4a';
-            a.click();
+            // 録音データを「ファイル」として扱う準備
+            const fileName = 'cs.reception.m4a';
+            const file = new File([recordedAudioBlob], fileName, { type: 'audio/m4a' });
+
+            // iPadやiPhoneのように「共有機能」が使えるブラウザかどうかチェック
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                try {
+                    // 共有画面を呼び出す
+                    await navigator.share({
+                        files: [file],
+                        title: '録音データ'
+                    });
+                } catch (error) {
+                    // ユーザーが「キャンセル」を押した時などもここを通ります
+                    console.log('共有がキャンセルされました');
+                }
+            } else {
+                // PCなど、共有画面が出せない場合は普通にダウンロード
+                const audioUrl = URL.createObjectURL(recordedAudioBlob);
+                const a = document.createElement('a');
+                a.href = audioUrl;
+                a.download = fileName;
+                a.click();
+                URL.revokeObjectURL(audioUrl); // メモリを綺麗にする処理を追加
+            }
         });
 
         // リセットボタン
