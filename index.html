@@ -86,7 +86,7 @@
            印刷用レイアウト（プレビュー・印刷時共通）
            ========================================= */
         #printArea {
-            display: none; /* 通常時は非表示 */
+            display: none;
         }
 
         .page {
@@ -114,26 +114,26 @@
             position: absolute;
             top: 44mm;
             left: 147mm;
-            font-size: 9pt;
+            font-size: 6pt; /* 9ptの2/3倍に変更 */
             font-weight: bold;
             z-index: 2;
-            background: white;
+            background: transparent; /* 背景を透明に変更 */
             padding: 0 1mm;
             white-space: nowrap;
         }
         
         .date-side {
             position: absolute;
-            top: 168mm;
+            top: 158mm; /* 168mmから10mm上に変更 */
             right: 22mm;
-            width: 35mm; /* 【追加】幅を固定することで改行崩れを防ぐ */
+            width: 35mm;
             font-weight: bold;
             z-index: 2;
-            background: white;
+            background: transparent; /* 背景を透明に変更 */
             padding: 0 1mm;
             text-align: center;
             line-height: 1.3;
-            word-break: keep-all; /* 【追加】変な位置での改行を防ぐ */
+            word-break: keep-all; 
         }
         .date-side-year { font-size: 9pt; }
         .date-side-day { font-size: 13.5pt; }
@@ -152,7 +152,7 @@
            印刷ダイアログ起動時の設定
            ========================================= */
         @media print {
-            body * { visibility: hidden; } /* 操作UIなどを隠す */
+            body * { visibility: hidden; }
             #printArea, #printArea * { visibility: visible; }
             #printArea {
                 display: block !important;
@@ -167,7 +167,6 @@
 </head>
 <body>
 
-    <!-- 操作画面 -->
     <div class="container no-print">
         <h1>未来新聞 発行システム</h1>
 
@@ -204,143 +203,4 @@
             <img src="bg2.png" class="bg-img">
             <div class="date-top date-top-target"></div>
             <div class="date-side date-side-target"></div>
-            <img class="photo-frame photo-target">
-        </div>
-        <!-- 3ページ目（写真なし） -->
-        <div class="page">
-            <img src="bg3.png" class="bg-img">
-            <div class="date-top date-top-target"></div>
-            <div class="date-side date-side-target"></div>
-        </div>
-    </div>
-
-    <script>
-        let capturedBase64 = null;
-        let mediaRecorder = null;
-        let audioChunks = [];
-        let recordedAudioBlob = null;
-
-        const cameraInput = document.getElementById('cameraInput');
-        const photoBtn = document.getElementById('photoBtn');
-        const previewImage = document.getElementById('previewImage');
-        const previewText = document.getElementById('previewText');
-        const recordingArea = document.getElementById('recordingArea');
-        const stopRecordBtn = document.getElementById('stopRecordBtn');
-        const printBtn = document.getElementById('printBtn');
-        const downloadBtn = document.getElementById('downloadBtn');
-        const resetBtn = document.getElementById('resetBtn');
-
-        // ① 写真撮影処理
-        photoBtn.addEventListener('click', () => cameraInput.click());
-
-        cameraInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                capturedBase64 = event.target.result;
-                previewImage.src = capturedBase64;
-                previewImage.style.display = 'block';
-                previewText.style.display = 'none';
-                
-                startRecording();
-            };
-            reader.readAsDataURL(file);
-        });
-
-        // 自動録音処理
-        async function startRecording() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(stream);
-                audioChunks = [];
-
-                mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
-                mediaRecorder.onstop = () => {
-                    recordedAudioBlob = new Blob(audioChunks, { type: 'audio/m4a' });
-                    printBtn.disabled = false;
-                    downloadBtn.disabled = false;
-                };
-
-                mediaRecorder.start();
-                recordingArea.style.display = 'block';
-            } catch (err) {
-                alert("マイク許可が必要です: " + err);
-            }
-        }
-
-        stopRecordBtn.addEventListener('click', () => {
-            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-                mediaRecorder.stop();
-                recordingArea.style.display = 'none';
-            }
-        });
-
-        // ② 新聞印刷ボタン（レイアウト崩れ対策を追加）
-        printBtn.addEventListener('click', () => {
-            const tomorrow = new Date();
-            tomorrow.setDate(tomorrow.getDate() + 1);
-
-            const year = tomorrow.getFullYear();
-            const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
-            const day = String(tomorrow.getDate()).padStart(2, '0');
-
-            const weekDays = ["日曜日", "月曜日", "火曜日", "水曜日", "木曜日", "金曜日", "土曜日"];
-            const weekDayStr = weekDays[tomorrow.getDay()];
-
-            const warekiOptions = { era: 'long', year: 'numeric' };
-            const warekiYearStr = new Intl.DateTimeFormat('ja-JP-u-ca-japanese', warekiOptions).format(tomorrow);
-
-            const topDateText = `${year}年（${warekiYearStr}）${month}月${day}日（${weekDayStr}）`;
-
-            const sideDateHTML = `
-                <div class="date-side-year">${year}年${warekiYearStr}</div>
-                <div class="date-side-day">${month}月${day}日</div>
-            `;
-
-            document.querySelectorAll('.date-top-target').forEach(el => el.textContent = topDateText);
-            document.querySelectorAll('.date-side-target').forEach(el => el.innerHTML = sideDateHTML);
-            document.querySelectorAll('.photo-target').forEach(el => el.src = capturedBase64);
-
-            const printArea = document.getElementById('printArea');
-            printArea.style.display = 'block';
-
-            // 【重要】ブラウザがHTMLと写真を画面に配置し終わるのを少し待ってから印刷画面を出す
-            setTimeout(() => {
-                window.print();
-                printArea.style.display = 'none';
-            }, 500); // 0.5秒待機
-        });
-
-        // ③ 音声ダウンロードボタン
-        downloadBtn.addEventListener('click', () => {
-            if (!recordedAudioBlob) return;
-            
-            const audioUrl = URL.createObjectURL(recordedAudioBlob);
-            const a = document.createElement('a');
-            a.href = audioUrl;
-            a.download = 'cs.reception.m4a';
-            a.click();
-        });
-
-        // リセットボタン
-        resetBtn.addEventListener('click', () => {
-            if (confirm("入力データと録音をリセットしますか？")) {
-                capturedBase64 = null;
-                recordedAudioBlob = null;
-                audioChunks = [];
-                cameraInput.value = '';
-
-                previewImage.src = '';
-                previewImage.style.display = 'none';
-                previewText.style.display = 'block';
-
-                recordingArea.style.display = 'none';
-                printBtn.disabled = true;
-                downloadBtn.disabled = true;
-            }
-        });
-    </script>
-</body>
-</html>
+            <img class="photo
