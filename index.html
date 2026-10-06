@@ -3,15 +3,12 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <!-- PWA（ホーム画面追加でフルスクリーンアプリ化）の設定 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>未来新聞 発行システム</title>
     
     <style>
-        /* UIデザイン（iPad向けレイアウト） */
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             margin: 0;
             padding: 20px;
             background-color: #f2f2f7;
@@ -20,25 +17,28 @@
             align-items: center;
         }
         .container {
-            max-width: 500px;
+            max-width: 480px;
             width: 100%;
-            background: white;
+            background: #ffffff;
             padding: 24px;
             border-radius: 16px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             text-align: center;
+            box-sizing: border-box;
         }
-        h1 { font-size: 24px; margin-bottom: 20px; }
+        h1 { font-size: 22px; margin-bottom: 20px; color: #1c1c1e; }
+        
+        /* ① ホーム画面のプレビュー枠を4:3（横長）に変更 */
         .preview-box {
-            width: 180px;
-            height: 240px; /* 3:4比率 */
-            border: 2px dashed #ccc;
-            border-radius: 8px;
+            width: 240px;
+            height: 180px; /* 4:3 横長比率 */
+            border: 2px dashed #c7c7cc;
+            border-radius: 12px;
             margin: 0 auto 20px;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: #fafafa;
+            background: #f2f2f7;
             overflow: hidden;
         }
         .preview-box img {
@@ -46,6 +46,7 @@
             height: 100%;
             object-fit: cover;
         }
+        
         .btn {
             width: 100%;
             padding: 16px;
@@ -53,27 +54,36 @@
             font-weight: bold;
             border: none;
             border-radius: 12px;
-            color: white;
+            color: #ffffff;
             cursor: pointer;
-            margin-bottom: 12px;
+            margin-bottom: 14px;
         }
         .btn-blue { background-color: #007aff; }
         .btn-orange { background-color: #ff9500; }
         .btn-green { background-color: #34c759; }
         .btn:disabled { background-color: #c7c7cc; cursor: not-allowed; }
+        
+        .recording-box {
+            background-color: rgba(255, 59, 48, 0.1);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 14px;
+        }
         .recording-status {
             color: #ff3b30;
             font-weight: bold;
+            font-size: 16px;
             margin-bottom: 10px;
             animation: blink 1s infinite;
         }
-        @keyframes blink { 50% { opacity: 0.5; } }
+        @keyframes blink { 50% { opacity: 0.4; } }
 
-        /* 印刷用のCSSスタイル設定 */
+        /* ② 印刷時用スタイル（CSS背景指定でiOS Safariでも100%印刷される構成） */
         @media print {
-            body { background: white; padding: 0; }
+            body { background: white; padding: 0; margin: 0; }
             .no-print { display: none !important; }
             @page { size: A4 portrait; margin: 0; }
+            
             .page {
                 width: 210mm;
                 height: 297mm;
@@ -81,76 +91,98 @@
                 page-break-after: always;
                 box-sizing: border-box;
                 font-family: "Hiragino Mincho ProN", "MS 明朝", serif;
+                overflow: hidden;
+                background-size: 100% 100% !important;
+                background-repeat: no-repeat !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
             }
+            
+            /* 新聞各ページの背景画像切り替え */
+            .page1 { background-image: url('bg1.jpg'); }
+            .page2 { background-image: url('bg2.jpg'); }
+            .page3 { background-image: url('bg3.jpg'); }
+            
+            /* 上部日付の位置（和暦） */
             .date-top {
                 position: absolute;
                 top: 14mm;
-                left: 28mm;
-                font-size: 11pt;
+                left: 60mm;
+                font-size: 10pt;
                 font-weight: bold;
+                z-index: 2;
+                background: white;
+                padding: 0 2mm;
             }
+            
+            /* 中央右側日付の位置 */
             .date-side {
                 position: absolute;
                 top: 48mm;
                 right: 22mm;
-                font-size: 10pt;
+                font-size: 9.5pt;
                 font-weight: bold;
+                z-index: 2;
+                background: white;
+                padding: 0 1mm;
             }
+            
+            /* ① 横長撮影写真（4:3）の差し込み枠（1・2ページ目の灰色枠位置） */
             .photo-frame {
                 position: absolute;
-                top: 62mm;
-                left: 22mm;
-                width: 100mm;
-                height: 133mm;
+                top: 61mm;
+                left: 18mm;
+                width: 112mm;
+                height: 84mm; /* 4:3 横長比率 */
                 object-fit: cover;
+                z-index: 2;
             }
         }
     </style>
 </head>
 <body>
 
-    <!-- アプリ操作画面（印刷時には非表示） -->
+    <!-- 操作画面 -->
     <div class="container no-print">
         <h1>未来新聞 発行システム</h1>
 
-        <!-- ① 写真プレビュー -->
-        <div class="preview-box" id="previewBox">
-            <span id="previewText">写真未撮影<br>(3:4枠)</span>
+        <!-- ① 写真プレビュー枠（4:3 横長） -->
+        <div class="preview-box">
+            <span id="previewText" style="color: #8e8e93;">写真未撮影<br>(4:3 横長枠)</span>
             <img id="previewImage" style="display:none;">
         </div>
 
-        <!-- カメラ起動用隠しInput -->
         <input type="file" id="cameraInput" accept="image/*" capture="camera" style="display:none;">
 
         <!-- ① 写真撮影ボタン -->
         <button class="btn btn-blue" id="photoBtn">① 写真撮影</button>
 
-        <!-- ② 録音中のステータス & 停止ボタン -->
-        <div id="recordingArea" style="display:none;">
+        <!-- ② 録音表示 ＆ 停止ボタン -->
+        <div class="recording-box" id="recordingArea" style="display:none;">
             <div class="recording-status">● 自動録音中...</div>
-            <button class="btn btn-orange" id="stopRecordBtn">録音停止</button>
+            <button class="btn btn-orange" id="stopRecordBtn" style="margin-bottom: 0;">録音停止</button>
         </div>
 
         <!-- ③ 印刷ボタン -->
         <button class="btn btn-green" id="printBtn" disabled>③ 明日の日付で全3ページ印刷</button>
     </div>
 
-    <!-- 印刷用レイアウト領域（画面上は隠し、印刷時のみ適用） -->
+    <!-- ② 印刷用領域 -->
     <div id="printArea" style="display:none;">
         <!-- 1ページ目 -->
-        <div class="page">
+        <div class="page page1">
             <div class="date-top date-target"></div>
             <div class="date-side date-target"></div>
             <img class="photo-frame photo-target">
         </div>
         <!-- 2ページ目 -->
-        <div class="page">
+        <div class="page page2">
             <div class="date-top date-target"></div>
             <div class="date-side date-target"></div>
             <img class="photo-frame photo-target">
         </div>
-        <!-- 3ページ目（写真なし） -->
-        <div class="page">
+        <!-- 3ページ目（写真差し込みなし） -->
+        <div class="page page3">
             <div class="date-top date-target"></div>
             <div class="date-side date-target"></div>
         </div>
@@ -169,12 +201,9 @@
         const stopRecordBtn = document.getElementById('stopRecordBtn');
         const printBtn = document.getElementById('printBtn');
 
-        // ① 写真撮影ボタンが押されたとき
-        photoBtn.addEventListener('click', () => {
-            cameraInput.click();
-        });
+        // ① 写真撮影処理
+        photoBtn.addEventListener('click', () => cameraInput.click());
 
-        // 写真が撮影されたときの処理
         cameraInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) return;
@@ -183,53 +212,45 @@
             reader.onload = (event) => {
                 capturedBase64 = event.target.result;
                 
-                // 確認ダイアログ（撮り直し確認）
                 if (confirm("この写真で確定して録音に進みますか？")) {
                     previewImage.src = capturedBase64;
                     previewImage.style.display = 'block';
                     previewText.style.display = 'none';
-
-                    // ② 撮影確定後、自動で録音開始
-                    startRecording();
+                    
+                    startRecording(); // ② 自動録音開始
                 } else {
-                    cameraInput.value = ''; // リセットして再撮影
+                    cameraInput.value = '';
                 }
             };
             reader.readAsDataURL(file);
         });
 
-        // ② 自動録音開始の処理
+        // ② 自動録音処理
         async function startRecording() {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 mediaRecorder = new MediaRecorder(stream);
                 audioChunks = [];
 
-                mediaRecorder.ondataavailable = (e) => {
-                    audioChunks.push(e.data);
-                };
-
+                mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
                 mediaRecorder.onstop = () => {
                     const audioBlob = new Blob(audioChunks, { type: 'audio/m4a' });
-                    // 音声ファイルをiPad内に保存（ダウンロード発火）
                     const audioUrl = URL.createObjectURL(audioBlob);
                     const a = document.createElement('a');
                     a.href = audioUrl;
                     a.download = `record_${Date.now()}.m4a`;
-                    a.click();
+                    a.click(); // 音声ファイルの自動ダウンロード
 
-                    // 録音完了後、印刷ボタンを有効化
                     printBtn.disabled = false;
                 };
 
                 mediaRecorder.start();
                 recordingArea.style.display = 'block';
             } catch (err) {
-                alert("マイクのアクセス許可が必要です: " + err);
+                alert("マイク許可が必要です: " + err);
             }
         }
 
-        // 録音停止ボタンが押されたとき
         stopRecordBtn.addEventListener('click', () => {
             if (mediaRecorder && mediaRecorder.state !== 'inactive') {
                 mediaRecorder.stop();
@@ -237,25 +258,20 @@
             }
         });
 
-        // ③ 明日の和暦日付を取得して印刷を実行
+        // ③ 明日の和暦日付を取得して印刷ダイアログ表示
         printBtn.addEventListener('click', () => {
-            // 明日の日付を取得
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
 
-            // 和暦（令和）フォーマット作成
+            // 明日の和暦表記（例: 令和8年10月7日(水)）
             const options = { era: 'long', year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' };
             const warekiTomorrow = new Intl.DateTimeFormat('ja-JP-u-ca-japanese', options).format(tomorrow);
 
-            // 印刷要素へ反映
             document.querySelectorAll('.date-target').forEach(el => el.textContent = warekiTomorrow);
             document.querySelectorAll('.photo-target').forEach(el => el.src = capturedBase64);
 
             document.getElementById('printArea').style.display = 'block';
-            
-            // 印刷ダイアログの表示
             window.print();
-
             document.getElementById('printArea').style.display = 'none';
         });
     </script>
