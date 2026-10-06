@@ -28,7 +28,6 @@
         }
         h1 { font-size: 22px; margin-bottom: 20px; color: #1c1c1e; }
         
-        /* ホーム画面の撮影プレビュー枠 (4:3 横長比率) */
         .preview-box {
             width: 240px;
             height: 180px;
@@ -65,9 +64,7 @@
         .btn-red { background-color: #ff3b30; }
         .btn:disabled { background-color: #c7c7cc; cursor: not-allowed; }
         
-        .reset-margin {
-            margin-top: 30px;
-        }
+        .reset-margin { margin-top: 30px; }
 
         .recording-box {
             background-color: rgba(255, 59, 48, 0.1);
@@ -84,66 +81,87 @@
         }
         @keyframes blink { 50% { opacity: 0.4; } }
 
-        /* 印刷時スタイル */
+
+        /* =========================================
+           印刷用レイアウト（プレビュー・印刷時共通）
+           ========================================= */
+        #printArea {
+            display: none; /* 通常時は非表示 */
+        }
+
+        .page {
+            width: 210mm;
+            height: 297mm;
+            position: relative;
+            page-break-after: always;
+            box-sizing: border-box;
+            font-family: "Hiragino Mincho ProN", "MS 明朝", serif;
+            overflow: hidden;
+            background: white;
+            margin: 0 auto;
+        }
+        
+        .bg-img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 210mm;
+            height: 297mm;
+            z-index: 1;
+        }
+        
+        .date-top {
+            position: absolute;
+            top: 44mm;
+            left: 147mm;
+            font-size: 9pt;
+            font-weight: bold;
+            z-index: 2;
+            background: white;
+            padding: 0 1mm;
+            white-space: nowrap;
+        }
+        
+        .date-side {
+            position: absolute;
+            top: 168mm;
+            right: 22mm;
+            width: 35mm; /* 【追加】幅を固定することで改行崩れを防ぐ */
+            font-weight: bold;
+            z-index: 2;
+            background: white;
+            padding: 0 1mm;
+            text-align: center;
+            line-height: 1.3;
+            word-break: keep-all; /* 【追加】変な位置での改行を防ぐ */
+        }
+        .date-side-year { font-size: 9pt; }
+        .date-side-day { font-size: 13.5pt; }
+        
+        .photo-frame {
+            position: absolute;
+            top: 103mm;
+            left: 37mm;
+            width: 122.08mm;
+            height: 91.56mm;
+            object-fit: cover;
+            z-index: 2;
+        }
+
+        /* =========================================
+           印刷ダイアログ起動時の設定
+           ========================================= */
         @media print {
-            body { background: white; padding: 0; margin: 0; }
-            .no-print { display: none !important; }
-            @page { size: A4 portrait; margin: 0; }
-            
-            .page {
-                width: 210mm;
-                height: 297mm;
-                position: relative;
-                page-break-after: always;
-                box-sizing: border-box;
-                font-family: "Hiragino Mincho ProN", "MS 明朝", serif;
-                overflow: hidden;
-            }
-            
-            /* 背景画像（印刷用） */
-            .bg-img {
+            body * { visibility: hidden; } /* 操作UIなどを隠す */
+            #printArea, #printArea * { visibility: visible; }
+            #printArea {
+                display: block !important;
                 position: absolute;
-                top: 0;
                 left: 0;
+                top: 0;
                 width: 210mm;
-                height: 297mm;
-                z-index: 1;
             }
-            
-            /* 上部日付の位置 */
-            .date-top {
-                position: absolute;
-                top: 14mm;
-                left: 60mm;
-                font-size: 10pt;
-                font-weight: bold;
-                z-index: 2;
-                background: white;
-                padding: 0 2mm;
-            }
-            
-            /* 中央右側日付の位置 */
-            .date-side {
-                position: absolute;
-                top: 48mm;
-                right: 22mm;
-                font-size: 9.5pt;
-                font-weight: bold;
-                z-index: 2;
-                background: white;
-                padding: 0 1mm;
-            }
-            
-            /* 写真挿入枠 */
-            .photo-frame {
-                position: absolute;
-                top: 61mm;
-                left: 18mm;
-                width: 112mm;
-                height: 84mm;
-                object-fit: cover;
-                z-index: 2;
-            }
+            @page { size: A4 portrait; margin: 0; }
         }
     </style>
 </head>
@@ -153,7 +171,6 @@
     <div class="container no-print">
         <h1>未来新聞 発行システム</h1>
 
-        <!-- 写真プレビュー枠 -->
         <div class="preview-box">
             <span id="previewText" style="color: #8e8e93;">写真未撮影<br>(4:3 横長枠)</span>
             <img id="previewImage" style="display:none;">
@@ -161,46 +178,39 @@
 
         <input type="file" id="cameraInput" accept="image/*" capture="camera" style="display:none;">
 
-        <!-- ① 写真撮影ボタン -->
         <button class="btn btn-blue" id="photoBtn">① 写真撮影</button>
 
-        <!-- 自動録音中の表示 ＆ 停止ボタン -->
         <div class="recording-box" id="recordingArea" style="display:none;">
             <div class="recording-status">● 自動録音中...</div>
             <button class="btn btn-orange" id="stopRecordBtn" style="margin-bottom: 0;">録音停止</button>
         </div>
 
-        <!-- ② 新聞印刷ボタン -->
         <button class="btn btn-green" id="printBtn" disabled>② 新聞印刷</button>
-
-        <!-- ③ 音声ダウンロードボタン -->
         <button class="btn btn-purple" id="downloadBtn" disabled>③ 音声ダウンロード</button>
-
-        <!-- リセットボタン -->
         <button class="btn btn-red reset-margin" id="resetBtn">リセット</button>
     </div>
 
     <!-- 印刷用領域 -->
-    <div id="printArea" style="display:none;">
+    <div id="printArea">
         <!-- 1ページ目 -->
         <div class="page">
             <img src="bg1.png" class="bg-img">
-            <div class="date-top date-target"></div>
-            <div class="date-side date-target"></div>
+            <div class="date-top date-top-target"></div>
+            <div class="date-side date-side-target"></div>
             <img class="photo-frame photo-target">
         </div>
         <!-- 2ページ目 -->
         <div class="page">
             <img src="bg2.png" class="bg-img">
-            <div class="date-top date-target"></div>
-            <div class="date-side date-target"></div>
+            <div class="date-top date-top-target"></div>
+            <div class="date-side date-side-target"></div>
             <img class="photo-frame photo-target">
         </div>
         <!-- 3ページ目（写真なし） -->
         <div class="page">
             <img src="bg3.png" class="bg-img">
-            <div class="date-top date-target"></div>
-            <div class="date-side date-target"></div>
+            <div class="date-top date-top-target"></div>
+            <div class="date-side date-side-target"></div>
         </div>
     </div>
 
@@ -234,7 +244,6 @@
                 previewImage.style.display = 'block';
                 previewText.style.display = 'none';
                 
-                // 確認ダイアログを出さず、そのまま自動録音開始
                 startRecording();
             };
             reader.readAsDataURL(file);
@@ -261,7 +270,6 @@
             }
         }
 
-        // 録音停止ボタン
         stopRecordBtn.addEventListener('click', () => {
             if (mediaRecorder && mediaRecorder.state !== 'inactive') {
                 mediaRecorder.stop();
@@ -269,23 +277,43 @@
             }
         });
 
-        // ② 新聞印刷ボタン
+        // ② 新聞印刷ボタン（レイアウト崩れ対策を追加）
         printBtn.addEventListener('click', () => {
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
 
-            const options = { era: 'long', year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' };
-            const warekiTomorrow = new Intl.DateTimeFormat('ja-JP-u-ca-japanese', options).format(tomorrow);
+            const year = tomorrow.getFullYear();
+            const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
+            const day = String(tomorrow.getDate()).padStart(2, '0');
 
-            document.querySelectorAll('.date-target').forEach(el => el.textContent = warekiTomorrow);
+            const weekDays = ["日曜日", "月曜日", "火曜日", "水曜日", "木曜日", "金曜日", "土曜日"];
+            const weekDayStr = weekDays[tomorrow.getDay()];
+
+            const warekiOptions = { era: 'long', year: 'numeric' };
+            const warekiYearStr = new Intl.DateTimeFormat('ja-JP-u-ca-japanese', warekiOptions).format(tomorrow);
+
+            const topDateText = `${year}年（${warekiYearStr}）${month}月${day}日（${weekDayStr}）`;
+
+            const sideDateHTML = `
+                <div class="date-side-year">${year}年${warekiYearStr}</div>
+                <div class="date-side-day">${month}月${day}日</div>
+            `;
+
+            document.querySelectorAll('.date-top-target').forEach(el => el.textContent = topDateText);
+            document.querySelectorAll('.date-side-target').forEach(el => el.innerHTML = sideDateHTML);
             document.querySelectorAll('.photo-target').forEach(el => el.src = capturedBase64);
 
-            document.getElementById('printArea').style.display = 'block';
-            window.print();
-            document.getElementById('printArea').style.display = 'none';
+            const printArea = document.getElementById('printArea');
+            printArea.style.display = 'block';
+
+            // 【重要】ブラウザがHTMLと写真を画面に配置し終わるのを少し待ってから印刷画面を出す
+            setTimeout(() => {
+                window.print();
+                printArea.style.display = 'none';
+            }, 500); // 0.5秒待機
         });
 
-        // ③ 音声ダウンロードボタン（cs.reception.m4a）
+        // ③ 音声ダウンロードボタン
         downloadBtn.addEventListener('click', () => {
             if (!recordedAudioBlob) return;
             
