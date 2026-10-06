@@ -46,11 +46,7 @@
             object-fit: cover;
         }
         
-        /* ボタンのデザイン（labelタグでも同じ見た目になるよう調整） */
         .btn {
-            display: block; /* 追加 */
-            box-sizing: border-box; /* 追加 */
-            text-align: center; /* 追加 */
             width: 100%;
             padding: 16px;
             font-size: 18px;
@@ -66,7 +62,7 @@
         .btn-green { background-color: #34c759; }
         .btn-purple { background-color: #af52de; }
         .btn-red { background-color: #ff3b30; }
-        .btn:disabled { background-color: #c7c7cc; cursor: not-allowed; pointer-events: none; }
+        .btn:disabled { background-color: #c7c7cc; cursor: not-allowed; }
         
         .reset-margin { margin-top: 30px; }
 
@@ -85,11 +81,12 @@
         }
         @keyframes blink { 50% { opacity: 0.4; } }
 
+
         /* =========================================
            印刷用レイアウト（プレビュー・印刷時共通）
            ========================================= */
         #printArea {
-            display: none;
+            display: none; /* 通常時は非表示 */
         }
 
         .page {
@@ -117,26 +114,26 @@
             position: absolute;
             top: 44mm;
             left: 147mm;
-            font-size: 6pt;
+            font-size: 9pt;
             font-weight: bold;
             z-index: 2;
-            background: transparent;
+            background: white;
             padding: 0 1mm;
             white-space: nowrap;
         }
         
         .date-side {
             position: absolute;
-            top: 158mm;
+            top: 168mm;
             right: 22mm;
-            width: 35mm;
+            width: 35mm; /* 【追加】幅を固定することで改行崩れを防ぐ */
             font-weight: bold;
             z-index: 2;
-            background: transparent;
+            background: white;
             padding: 0 1mm;
             text-align: center;
             line-height: 1.3;
-            word-break: keep-all; 
+            word-break: keep-all; /* 【追加】変な位置での改行を防ぐ */
         }
         .date-side-year { font-size: 9pt; }
         .date-side-day { font-size: 13.5pt; }
@@ -155,7 +152,7 @@
            印刷ダイアログ起動時の設定
            ========================================= */
         @media print {
-            body * { visibility: hidden; }
+            body * { visibility: hidden; } /* 操作UIなどを隠す */
             #printArea, #printArea * { visibility: visible; }
             #printArea {
                 display: block !important;
@@ -170,6 +167,7 @@
 </head>
 <body>
 
+    <!-- 操作画面 -->
     <div class="container no-print">
         <h1>未来新聞 発行システム</h1>
 
@@ -178,11 +176,9 @@
             <img id="previewImage" style="display:none;">
         </div>
 
-        <!-- 【修正ポイント】labelタグで囲むことで、クリック時に直接カメラが起動するように変更しました -->
-        <label class="btn btn-blue">
-            ① 写真撮影
-            <input type="file" id="cameraInput" accept="image/*" capture="camera" style="display:none;">
-        </label>
+        <input type="file" id="cameraInput" accept="image/*" capture="camera" style="display:none;">
+
+        <button class="btn btn-blue" id="photoBtn">① 写真撮影</button>
 
         <div class="recording-box" id="recordingArea" style="display:none;">
             <div class="recording-status">● 自動録音中...</div>
@@ -196,18 +192,21 @@
 
     <!-- 印刷用領域 -->
     <div id="printArea">
+        <!-- 1ページ目 -->
         <div class="page">
             <img src="bg1.png" class="bg-img">
             <div class="date-top date-top-target"></div>
             <div class="date-side date-side-target"></div>
             <img class="photo-frame photo-target">
         </div>
+        <!-- 2ページ目 -->
         <div class="page">
             <img src="bg2.png" class="bg-img">
             <div class="date-top date-top-target"></div>
             <div class="date-side date-side-target"></div>
             <img class="photo-frame photo-target">
         </div>
+        <!-- 3ページ目（写真なし） -->
         <div class="page">
             <img src="bg3.png" class="bg-img">
             <div class="date-top date-top-target"></div>
@@ -222,6 +221,7 @@
         let recordedAudioBlob = null;
 
         const cameraInput = document.getElementById('cameraInput');
+        const photoBtn = document.getElementById('photoBtn');
         const previewImage = document.getElementById('previewImage');
         const previewText = document.getElementById('previewText');
         const recordingArea = document.getElementById('recordingArea');
@@ -230,7 +230,9 @@
         const downloadBtn = document.getElementById('downloadBtn');
         const resetBtn = document.getElementById('resetBtn');
 
-        // ① 写真撮影処理（labelタグに変更したため、クリックイベントの処理は削除し、カメラの読み込み処理のみにしました）
+        // ① 写真撮影処理
+        photoBtn.addEventListener('click', () => cameraInput.click());
+
         cameraInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) return;
@@ -275,7 +277,7 @@
             }
         });
 
-        // ② 新聞印刷ボタン
+        // ② 新聞印刷ボタン（レイアウト崩れ対策を追加）
         printBtn.addEventListener('click', () => {
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
@@ -304,10 +306,11 @@
             const printArea = document.getElementById('printArea');
             printArea.style.display = 'block';
 
+            // 【重要】ブラウザがHTMLと写真を画面に配置し終わるのを少し待ってから印刷画面を出す
             setTimeout(() => {
                 window.print();
                 printArea.style.display = 'none';
-            }, 500); 
+            }, 500); // 0.5秒待機
         });
 
         // ③ 音声ダウンロードボタン
@@ -315,4 +318,29 @@
             if (!recordedAudioBlob) return;
             
             const audioUrl = URL.createObjectURL(recordedAudioBlob);
-            const
+            const a = document.createElement('a');
+            a.href = audioUrl;
+            a.download = 'cs.reception.m4a';
+            a.click();
+        });
+
+        // リセットボタン
+        resetBtn.addEventListener('click', () => {
+            if (confirm("入力データと録音をリセットしますか？")) {
+                capturedBase64 = null;
+                recordedAudioBlob = null;
+                audioChunks = [];
+                cameraInput.value = '';
+
+                previewImage.src = '';
+                previewImage.style.display = 'none';
+                previewText.style.display = 'block';
+
+                recordingArea.style.display = 'none';
+                printBtn.disabled = true;
+                downloadBtn.disabled = true;
+            }
+        });
+    </script>
+</body>
+</html>
