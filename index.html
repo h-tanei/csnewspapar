@@ -47,6 +47,8 @@
         }
         
         .btn {
+            display: block;
+            box-sizing: border-box;
             width: 100%;
             padding: 16px;
             font-size: 18px;
@@ -56,13 +58,14 @@
             color: #ffffff;
             cursor: pointer;
             margin-bottom: 14px;
+            text-align: center;
         }
         .btn-blue { background-color: #007aff; }
         .btn-orange { background-color: #ff9500; }
         .btn-green { background-color: #34c759; }
         .btn-purple { background-color: #af52de; }
         .btn-red { background-color: #ff3b30; }
-        .btn:disabled { background-color: #c7c7cc; cursor: not-allowed; }
+        .btn:disabled { background-color: #c7c7cc; cursor: not-allowed; pointer-events: none; }
         
         .reset-margin { margin-top: 30px; }
 
@@ -81,12 +84,11 @@
         }
         @keyframes blink { 50% { opacity: 0.4; } }
 
-
         /* =========================================
            印刷用レイアウト（プレビュー・印刷時共通）
            ========================================= */
         #printArea {
-            display: none; /* 通常時は非表示 */
+            display: none;
         }
 
         .page {
@@ -114,26 +116,26 @@
             position: absolute;
             top: 44mm;
             left: 147mm;
-            font-size: 9pt;
+            font-size: 6pt;
             font-weight: bold;
             z-index: 2;
-            background: white;
+            background: transparent;
             padding: 0 1mm;
             white-space: nowrap;
         }
         
         .date-side {
             position: absolute;
-            top: 168mm;
+            top: 158mm;
             right: 22mm;
-            width: 35mm; /* 【追加】幅を固定することで改行崩れを防ぐ */
+            width: 35mm;
             font-weight: bold;
             z-index: 2;
-            background: white;
+            background: transparent;
             padding: 0 1mm;
             text-align: center;
             line-height: 1.3;
-            word-break: keep-all; /* 【追加】変な位置での改行を防ぐ */
+            word-break: keep-all; 
         }
         .date-side-year { font-size: 9pt; }
         .date-side-day { font-size: 13.5pt; }
@@ -148,11 +150,8 @@
             z-index: 2;
         }
 
-        /* =========================================
-           印刷ダイアログ起動時の設定
-           ========================================= */
         @media print {
-            body * { visibility: hidden; } /* 操作UIなどを隠す */
+            body * { visibility: hidden; }
             #printArea, #printArea * { visibility: visible; }
             #printArea {
                 display: block !important;
@@ -167,7 +166,6 @@
 </head>
 <body>
 
-    <!-- 操作画面 -->
     <div class="container no-print">
         <h1>未来新聞 発行システム</h1>
 
@@ -176,37 +174,34 @@
             <img id="previewImage" style="display:none;">
         </div>
 
+        <!-- 隠しカメラ入力と、最初の安定したボタン方式に戻しました -->
         <input type="file" id="cameraInput" accept="image/*" capture="camera" style="display:none;">
-
-        <button class="btn btn-blue" id="photoBtn">① 写真撮影</button>
+        <button class="btn btn-blue" id="photoBtn" type="button">① 写真撮影</button>
 
         <div class="recording-box" id="recordingArea" style="display:none;">
             <div class="recording-status">● 自動録音中...</div>
-            <button class="btn btn-orange" id="stopRecordBtn" style="margin-bottom: 0;">録音停止</button>
+            <button class="btn btn-orange" id="stopRecordBtn" style="margin-bottom: 0;" type="button">録音停止</button>
         </div>
 
-        <button class="btn btn-green" id="printBtn" disabled>② 新聞印刷</button>
-        <button class="btn btn-purple" id="downloadBtn" disabled>③ 音声ダウンロード</button>
-        <button class="btn btn-red reset-margin" id="resetBtn">リセット</button>
+        <button class="btn btn-green" id="printBtn" disabled type="button">② 新聞印刷</button>
+        <button class="btn btn-purple" id="downloadBtn" disabled type="button">③ 音声ダウンロード</button>
+        <button class="btn btn-red reset-margin" id="resetBtn" type="button">リセット</button>
     </div>
 
     <!-- 印刷用領域 -->
     <div id="printArea">
-        <!-- 1ページ目 -->
         <div class="page">
             <img src="bg1.png" class="bg-img">
             <div class="date-top date-top-target"></div>
             <div class="date-side date-side-target"></div>
             <img class="photo-frame photo-target">
         </div>
-        <!-- 2ページ目 -->
         <div class="page">
             <img src="bg2.png" class="bg-img">
             <div class="date-top date-top-target"></div>
             <div class="date-side date-side-target"></div>
             <img class="photo-frame photo-target">
         </div>
-        <!-- 3ページ目（写真なし） -->
         <div class="page">
             <img src="bg3.png" class="bg-img">
             <div class="date-top date-top-target"></div>
@@ -215,7 +210,8 @@
     </div>
 
     <script>
-        let capturedBase64 = null;
+        // データを軽く扱うための変数を準備
+        let capturedPhotoUrl = null; 
         let mediaRecorder = null;
         let audioChunks = [];
         let recordedAudioBlob = null;
@@ -230,23 +226,29 @@
         const downloadBtn = document.getElementById('downloadBtn');
         const resetBtn = document.getElementById('resetBtn');
 
-        // ① 写真撮影処理
-        photoBtn.addEventListener('click', () => cameraInput.click());
+        // ① 写真撮影ボタンを押したときの処理
+        photoBtn.addEventListener('click', () => {
+            cameraInput.value = ''; // 連続で撮影しても確実に反応するようにリセット
+            cameraInput.click();
+        });
 
+        // 写真が撮り終わった直後の処理
         cameraInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) return;
 
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                capturedBase64 = event.target.result;
-                previewImage.src = capturedBase64;
-                previewImage.style.display = 'block';
-                previewText.style.display = 'none';
-                
-                startRecording();
-            };
-            reader.readAsDataURL(file);
+            // 【フリーズ対策】重いFileReader処理をやめ、メモリに負担をかけないObjectURL方式に変更
+            if (capturedPhotoUrl) {
+                URL.revokeObjectURL(capturedPhotoUrl); // 前の画像のメモリを解放
+            }
+            capturedPhotoUrl = URL.createObjectURL(file);
+            
+            previewImage.src = capturedPhotoUrl;
+            previewImage.style.display = 'block';
+            previewText.style.display = 'none';
+            
+            // 写真が表示されたら録音を開始
+            startRecording();
         });
 
         // 自動録音処理
@@ -266,7 +268,7 @@
                 mediaRecorder.start();
                 recordingArea.style.display = 'block';
             } catch (err) {
-                alert("マイク許可が必要です: " + err);
+                alert("マイクへのアクセスが許可されていないため、録音を開始できませんでした。スマートフォンの設定をご確認ください。");
             }
         }
 
@@ -277,7 +279,7 @@
             }
         });
 
-        // ② 新聞印刷ボタン（レイアウト崩れ対策を追加）
+        // ② 新聞印刷ボタン
         printBtn.addEventListener('click', () => {
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
@@ -301,16 +303,16 @@
 
             document.querySelectorAll('.date-top-target').forEach(el => el.textContent = topDateText);
             document.querySelectorAll('.date-side-target').forEach(el => el.innerHTML = sideDateHTML);
-            document.querySelectorAll('.photo-target').forEach(el => el.src = capturedBase64);
+            // 印刷用の写真枠にも軽量なURLをセット
+            document.querySelectorAll('.photo-target').forEach(el => el.src = capturedPhotoUrl);
 
             const printArea = document.getElementById('printArea');
             printArea.style.display = 'block';
 
-            // 【重要】ブラウザがHTMLと写真を画面に配置し終わるのを少し待ってから印刷画面を出す
             setTimeout(() => {
                 window.print();
                 printArea.style.display = 'none';
-            }, 500); // 0.5秒待機
+            }, 500); 
         });
 
         // ③ 音声ダウンロードボタン
@@ -327,7 +329,10 @@
         // リセットボタン
         resetBtn.addEventListener('click', () => {
             if (confirm("入力データと録音をリセットしますか？")) {
-                capturedBase64 = null;
+                if (capturedPhotoUrl) {
+                    URL.revokeObjectURL(capturedPhotoUrl);
+                }
+                capturedPhotoUrl = null;
                 recordedAudioBlob = null;
                 audioChunks = [];
                 cameraInput.value = '';
