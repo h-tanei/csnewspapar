@@ -28,10 +28,10 @@
         }
         h1 { font-size: 22px; margin-bottom: 20px; color: #1c1c1e; }
         
-        /* ① ホーム画面のプレビュー枠を4:3（横長）に変更 */
+        /* ホーム画面の撮影プレビュー枠 (4:3 横長比率) */
         .preview-box {
             width: 240px;
-            height: 180px; /* 4:3 横長比率 */
+            height: 180px;
             border: 2px dashed #c7c7cc;
             border-radius: 12px;
             margin: 0 auto 20px;
@@ -61,8 +61,15 @@
         .btn-blue { background-color: #007aff; }
         .btn-orange { background-color: #ff9500; }
         .btn-green { background-color: #34c759; }
+        .btn-purple { background-color: #af52de; }
+        .btn-red { background-color: #ff3b30; }
         .btn:disabled { background-color: #c7c7cc; cursor: not-allowed; }
         
+        /* リセットボタン用に上のボタンと間隔を空ける */
+        .reset-margin {
+            margin-top: 30px;
+        }
+
         .recording-box {
             background-color: rgba(255, 59, 48, 0.1);
             border-radius: 12px;
@@ -78,7 +85,7 @@
         }
         @keyframes blink { 50% { opacity: 0.4; } }
 
-        /* ② 印刷時用スタイル（CSS背景指定でiOS Safariでも100%印刷される構成） */
+        /* 印刷時スタイル（PNG背景画像をA4全面に適用） */
         @media print {
             body { background: white; padding: 0; margin: 0; }
             .no-print { display: none !important; }
@@ -98,12 +105,12 @@
                 print-color-adjust: exact !important;
             }
             
-            /* 新聞各ページの背景画像切り替え */
-            .page1 { background-image: url('bg1.jpg'); }
-            .page2 { background-image: url('bg2.jpg'); }
-            .page3 { background-image: url('bg3.jpg'); }
+            /* 新聞背景（PNG画像指定） */
+            .page1 { background-image: url('bg1.png'); }
+            .page2 { background-image: url('bg2.png'); }
+            .page3 { background-image: url('bg3.png'); }
             
-            /* 上部日付の位置（和暦） */
+            /* 上部日付の位置 */
             .date-top {
                 position: absolute;
                 top: 14mm;
@@ -127,13 +134,13 @@
                 padding: 0 1mm;
             }
             
-            /* ① 横長撮影写真（4:3）の差し込み枠（1・2ページ目の灰色枠位置） */
+            /* 1・2ページ目の撮影写真挿入枠（4:3 横長） */
             .photo-frame {
                 position: absolute;
                 top: 61mm;
                 left: 18mm;
                 width: 112mm;
-                height: 84mm; /* 4:3 横長比率 */
+                height: 84mm;
                 object-fit: cover;
                 z-index: 2;
             }
@@ -146,7 +153,7 @@
     <div class="container no-print">
         <h1>未来新聞 発行システム</h1>
 
-        <!-- ① 写真プレビュー枠（4:3 横長） -->
+        <!-- 写真プレビュー枠 (4:3 横長) -->
         <div class="preview-box">
             <span id="previewText" style="color: #8e8e93;">写真未撮影<br>(4:3 横長枠)</span>
             <img id="previewImage" style="display:none;">
@@ -157,17 +164,23 @@
         <!-- ① 写真撮影ボタン -->
         <button class="btn btn-blue" id="photoBtn">① 写真撮影</button>
 
-        <!-- ② 録音表示 ＆ 停止ボタン -->
+        <!-- 自動録音中の表示 ＆ 停止ボタン -->
         <div class="recording-box" id="recordingArea" style="display:none;">
             <div class="recording-status">● 自動録音中...</div>
             <button class="btn btn-orange" id="stopRecordBtn" style="margin-bottom: 0;">録音停止</button>
         </div>
 
-        <!-- ③ 印刷ボタン -->
-        <button class="btn btn-green" id="printBtn" disabled>③ 明日の日付で全3ページ印刷</button>
+        <!-- ② 新聞印刷ボタン -->
+        <button class="btn btn-green" id="printBtn" disabled>② 新聞印刷</button>
+
+        <!-- ③ 音声ダウンロードボタン（手動DL） -->
+        <button class="btn btn-purple" id="downloadBtn" disabled>③ 音声ダウンロード</button>
+
+        <!-- リセットボタン（少し間隔を空けて一番下に配置） -->
+        <button class="btn btn-red reset-margin" id="resetBtn">リセット</button>
     </div>
 
-    <!-- ② 印刷用領域 -->
+    <!-- 印刷用領域 -->
     <div id="printArea" style="display:none;">
         <!-- 1ページ目 -->
         <div class="page page1">
@@ -192,6 +205,7 @@
         let capturedBase64 = null;
         let mediaRecorder = null;
         let audioChunks = [];
+        let recordedAudioBlob = null; // 録音済みデータの保持用
 
         const cameraInput = document.getElementById('cameraInput');
         const photoBtn = document.getElementById('photoBtn');
@@ -200,6 +214,8 @@
         const recordingArea = document.getElementById('recordingArea');
         const stopRecordBtn = document.getElementById('stopRecordBtn');
         const printBtn = document.getElementById('printBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const resetBtn = document.getElementById('resetBtn');
 
         // ① 写真撮影処理
         photoBtn.addEventListener('click', () => cameraInput.click());
@@ -217,7 +233,7 @@
                     previewImage.style.display = 'block';
                     previewText.style.display = 'none';
                     
-                    startRecording(); // ② 自動録音開始
+                    startRecording(); // 自動録音開始
                 } else {
                     cameraInput.value = '';
                 }
@@ -225,7 +241,7 @@
             reader.readAsDataURL(file);
         });
 
-        // ② 自動録音処理
+        // 自動録音処理
         async function startRecording() {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -234,14 +250,12 @@
 
                 mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
                 mediaRecorder.onstop = () => {
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/m4a' });
-                    const audioUrl = URL.createObjectURL(audioBlob);
-                    const a = document.createElement('a');
-                    a.href = audioUrl;
-                    a.download = `record_${Date.now()}.m4a`;
-                    a.click(); // 音声ファイルの自動ダウンロード
-
+                    // 録音完了時にBlobデータを変数に保持（自動ダウンロードはしない）
+                    recordedAudioBlob = new Blob(audioChunks, { type: 'audio/m4a' });
+                    
+                    // 新聞印刷・音声ダウンロードのボタンを有効化
                     printBtn.disabled = false;
+                    downloadBtn.disabled = false;
                 };
 
                 mediaRecorder.start();
@@ -251,6 +265,7 @@
             }
         }
 
+        // 録音停止ボタン処理
         stopRecordBtn.addEventListener('click', () => {
             if (mediaRecorder && mediaRecorder.state !== 'inactive') {
                 mediaRecorder.stop();
@@ -258,12 +273,12 @@
             }
         });
 
-        // ③ 明日の和暦日付を取得して印刷ダイアログ表示
+        // ② 新聞印刷ボタン処理
         printBtn.addEventListener('click', () => {
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
 
-            // 明日の和暦表記（例: 令和8年10月7日(水)）
+            // 明日の和暦表記
             const options = { era: 'long', year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' };
             const warekiTomorrow = new Intl.DateTimeFormat('ja-JP-u-ca-japanese', options).format(tomorrow);
 
@@ -273,6 +288,35 @@
             document.getElementById('printArea').style.display = 'block';
             window.print();
             document.getElementById('printArea').style.display = 'none';
+        });
+
+        // ③ 音声ダウンロードボタン処理（ファイル名：cs.reception.m4a）
+        downloadBtn.addEventListener('click', () => {
+            if (!recordedAudioBlob) return;
+            
+            const audioUrl = URL.createObjectURL(recordedAudioBlob);
+            const a = document.createElement('a');
+            a.href = audioUrl;
+            a.download = 'cs.reception.m4a'; // 指定されたファイル名
+            a.click();
+        });
+
+        // リセットボタン処理
+        resetBtn.addEventListener('click', () => {
+            if (confirm("入力データと録音をリセットしますか？")) {
+                capturedBase64 = null;
+                recordedAudioBlob = null;
+                audioChunks = [];
+                cameraInput.value = '';
+
+                previewImage.src = '';
+                previewImage.style.display = 'none';
+                previewText.style.display = 'block';
+
+                recordingArea.style.display = 'none';
+                printBtn.disabled = true;
+                downloadBtn.disabled = true;
+            }
         });
     </script>
 </body>
