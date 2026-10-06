@@ -278,7 +278,7 @@
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
 
-            // 明日の和暦表記
+            // 明日の和暦表記する
             const options = { era: 'long', year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' };
             const warekiTomorrow = new Intl.DateTimeFormat('ja-JP-u-ca-japanese', options).format(tomorrow);
 
