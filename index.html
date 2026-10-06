@@ -46,7 +46,11 @@
             object-fit: cover;
         }
         
+        /* ボタンのデザイン（labelタグでも同じ見た目になるよう調整） */
         .btn {
+            display: block; /* 追加 */
+            box-sizing: border-box; /* 追加 */
+            text-align: center; /* 追加 */
             width: 100%;
             padding: 16px;
             font-size: 18px;
@@ -62,7 +66,7 @@
         .btn-green { background-color: #34c759; }
         .btn-purple { background-color: #af52de; }
         .btn-red { background-color: #ff3b30; }
-        .btn:disabled { background-color: #c7c7cc; cursor: not-allowed; }
+        .btn:disabled { background-color: #c7c7cc; cursor: not-allowed; pointer-events: none; }
         
         .reset-margin { margin-top: 30px; }
 
@@ -80,7 +84,6 @@
             animation: blink 1s infinite;
         }
         @keyframes blink { 50% { opacity: 0.4; } }
-
 
         /* =========================================
            印刷用レイアウト（プレビュー・印刷時共通）
@@ -114,22 +117,22 @@
             position: absolute;
             top: 44mm;
             left: 147mm;
-            font-size: 6pt; /* 9ptの2/3倍に変更 */
+            font-size: 6pt;
             font-weight: bold;
             z-index: 2;
-            background: transparent; /* 背景を透明に変更 */
+            background: transparent;
             padding: 0 1mm;
             white-space: nowrap;
         }
         
         .date-side {
             position: absolute;
-            top: 158mm; /* 168mmから10mm上に変更 */
+            top: 158mm;
             right: 22mm;
             width: 35mm;
             font-weight: bold;
             z-index: 2;
-            background: transparent; /* 背景を透明に変更 */
+            background: transparent;
             padding: 0 1mm;
             text-align: center;
             line-height: 1.3;
@@ -175,9 +178,11 @@
             <img id="previewImage" style="display:none;">
         </div>
 
-        <input type="file" id="cameraInput" accept="image/*" capture="camera" style="display:none;">
-
-        <button class="btn btn-blue" id="photoBtn">① 写真撮影</button>
+        <!-- 【修正ポイント】labelタグで囲むことで、クリック時に直接カメラが起動するように変更しました -->
+        <label class="btn btn-blue">
+            ① 写真撮影
+            <input type="file" id="cameraInput" accept="image/*" capture="camera" style="display:none;">
+        </label>
 
         <div class="recording-box" id="recordingArea" style="display:none;">
             <div class="recording-status">● 自動録音中...</div>
@@ -191,16 +196,123 @@
 
     <!-- 印刷用領域 -->
     <div id="printArea">
-        <!-- 1ページ目 -->
         <div class="page">
             <img src="bg1.png" class="bg-img">
             <div class="date-top date-top-target"></div>
             <div class="date-side date-side-target"></div>
             <img class="photo-frame photo-target">
         </div>
-        <!-- 2ページ目 -->
         <div class="page">
             <img src="bg2.png" class="bg-img">
             <div class="date-top date-top-target"></div>
             <div class="date-side date-side-target"></div>
-            <img class="photo
+            <img class="photo-frame photo-target">
+        </div>
+        <div class="page">
+            <img src="bg3.png" class="bg-img">
+            <div class="date-top date-top-target"></div>
+            <div class="date-side date-side-target"></div>
+        </div>
+    </div>
+
+    <script>
+        let capturedBase64 = null;
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let recordedAudioBlob = null;
+
+        const cameraInput = document.getElementById('cameraInput');
+        const previewImage = document.getElementById('previewImage');
+        const previewText = document.getElementById('previewText');
+        const recordingArea = document.getElementById('recordingArea');
+        const stopRecordBtn = document.getElementById('stopRecordBtn');
+        const printBtn = document.getElementById('printBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const resetBtn = document.getElementById('resetBtn');
+
+        // ① 写真撮影処理（labelタグに変更したため、クリックイベントの処理は削除し、カメラの読み込み処理のみにしました）
+        cameraInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                capturedBase64 = event.target.result;
+                previewImage.src = capturedBase64;
+                previewImage.style.display = 'block';
+                previewText.style.display = 'none';
+                
+                startRecording();
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // 自動録音処理
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+                mediaRecorder.onstop = () => {
+                    recordedAudioBlob = new Blob(audioChunks, { type: 'audio/m4a' });
+                    printBtn.disabled = false;
+                    downloadBtn.disabled = false;
+                };
+
+                mediaRecorder.start();
+                recordingArea.style.display = 'block';
+            } catch (err) {
+                alert("マイク許可が必要です: " + err);
+            }
+        }
+
+        stopRecordBtn.addEventListener('click', () => {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                recordingArea.style.display = 'none';
+            }
+        });
+
+        // ② 新聞印刷ボタン
+        printBtn.addEventListener('click', () => {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+
+            const year = tomorrow.getFullYear();
+            const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
+            const day = String(tomorrow.getDate()).padStart(2, '0');
+
+            const weekDays = ["日曜日", "月曜日", "火曜日", "水曜日", "木曜日", "金曜日", "土曜日"];
+            const weekDayStr = weekDays[tomorrow.getDay()];
+
+            const warekiOptions = { era: 'long', year: 'numeric' };
+            const warekiYearStr = new Intl.DateTimeFormat('ja-JP-u-ca-japanese', warekiOptions).format(tomorrow);
+
+            const topDateText = `${year}年（${warekiYearStr}）${month}月${day}日（${weekDayStr}）`;
+
+            const sideDateHTML = `
+                <div class="date-side-year">${year}年${warekiYearStr}</div>
+                <div class="date-side-day">${month}月${day}日</div>
+            `;
+
+            document.querySelectorAll('.date-top-target').forEach(el => el.textContent = topDateText);
+            document.querySelectorAll('.date-side-target').forEach(el => el.innerHTML = sideDateHTML);
+            document.querySelectorAll('.photo-target').forEach(el => el.src = capturedBase64);
+
+            const printArea = document.getElementById('printArea');
+            printArea.style.display = 'block';
+
+            setTimeout(() => {
+                window.print();
+                printArea.style.display = 'none';
+            }, 500); 
+        });
+
+        // ③ 音声ダウンロードボタン
+        downloadBtn.addEventListener('click', () => {
+            if (!recordedAudioBlob) return;
+            
+            const audioUrl = URL.createObjectURL(recordedAudioBlob);
+            const
