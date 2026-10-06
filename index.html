@@ -115,7 +115,7 @@
         .date-top {
             position: absolute;
             top: 44mm;
-            left: 147mm;
+            left: 145mm; /* 147mmから左へ2mm移動 */
             font-size: 6pt;
             font-weight: bold;
             z-index: 2;
@@ -126,7 +126,7 @@
         
         .date-side {
             position: absolute;
-            top: 158mm;
+            top: 161mm; /* 158mmから下へ3mm移動 */
             right: 22mm;
             width: 35mm;
             font-weight: bold;
@@ -174,7 +174,6 @@
             <img id="previewImage" style="display:none;">
         </div>
 
-        <!-- 隠しカメラ入力と、最初の安定したボタン方式に戻しました -->
         <input type="file" id="cameraInput" accept="image/*" capture="camera" style="display:none;">
         <button class="btn btn-blue" id="photoBtn" type="button">① 写真撮影</button>
 
@@ -210,7 +209,6 @@
     </div>
 
     <script>
-        // データを軽く扱うための変数を準備
         let capturedPhotoUrl = null; 
         let mediaRecorder = null;
         let audioChunks = [];
@@ -226,20 +224,18 @@
         const downloadBtn = document.getElementById('downloadBtn');
         const resetBtn = document.getElementById('resetBtn');
 
-        // ① 写真撮影ボタンを押したときの処理
+        // ① 写真撮影
         photoBtn.addEventListener('click', () => {
-            cameraInput.value = ''; // 連続で撮影しても確実に反応するようにリセット
+            cameraInput.value = ''; 
             cameraInput.click();
         });
 
-        // 写真が撮り終わった直後の処理
         cameraInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) return;
 
-            // 【フリーズ対策】重いFileReader処理をやめ、メモリに負担をかけないObjectURL方式に変更
             if (capturedPhotoUrl) {
-                URL.revokeObjectURL(capturedPhotoUrl); // 前の画像のメモリを解放
+                URL.revokeObjectURL(capturedPhotoUrl); 
             }
             capturedPhotoUrl = URL.createObjectURL(file);
             
@@ -247,7 +243,6 @@
             previewImage.style.display = 'block';
             previewText.style.display = 'none';
             
-            // 写真が表示されたら録音を開始
             startRecording();
         });
 
@@ -303,7 +298,6 @@
 
             document.querySelectorAll('.date-top-target').forEach(el => el.textContent = topDateText);
             document.querySelectorAll('.date-side-target').forEach(el => el.innerHTML = sideDateHTML);
-            // 印刷用の写真枠にも軽量なURLをセット
             document.querySelectorAll('.photo-target').forEach(el => el.src = capturedPhotoUrl);
 
             const printArea = document.getElementById('printArea');
