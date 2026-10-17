@@ -132,7 +132,7 @@
       font-family: ta-koibumi, "TA-Koibumi", "TA恋文", serif;
       font-size: clamp(14px, 2.5vw, 22px);
       color: #000000;
-      line-height: 2.2;
+      line-height: 1.1; /* 🌟 行間を2.2から約半分の1.1に変更 */
       word-break: break-all;
     }
 
@@ -141,8 +141,8 @@
       width: 16em; /* 横16文字分 */
       max-width: 100%;
       
-      /* 🌟 画面上の位置調整：上へ10mm移動 (120mm -> 110mm) */
-      transform: translate(-17mm, 110mm);
+      /* 🌟 画面上の位置調整：さらに3mm上へ移動 (110mm -> 107mm) */
+      transform: translate(-17mm, 107mm);
     }
 
     /* 🖨️ A4横向き専用 印刷設定 */
@@ -182,15 +182,15 @@
         box-shadow: none;
         box-sizing: border-box;
         
-        /* 🌟 印刷時の位置調整：上へ10mm移動 (160mm -> 150mm) */
-        padding-top: 150mm;
+        /* 🌟 印刷時の位置調整：さらに3mm上へ移動 (150mm -> 147mm) */
+        padding-top: 147mm;
         padding-left: 33mm;
         padding-right: 50mm;
         padding-bottom: 20mm;
         
         font-family: ta-koibumi, "TA-Koibumi", "TA恋文", serif;
         font-size: 17pt;   /* 印刷時のフォントサイズ固定 */
-        line-height: 2.2;
+        line-height: 1.1; /* 🌟 印刷時も行間1.1に合わせる */
         
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
