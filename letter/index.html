@@ -111,6 +111,7 @@
       display: flex;
       justify-content: center;
       align-items: flex-start;
+      overflow: hidden; /* 移動指定によるはみ出し防止 */
     }
 
     /* A4横向き比率 */
@@ -123,15 +124,15 @@
       width: 100%;
       max-width: 650px;
       aspect-ratio: 297 / 210; /* A4横の比率 */
-      padding: 10% 12%;       /* 位置調整用余白 */
+      padding: 10% 12%;       /* 基礎余白 */
       box-shadow: 0 4px 12px rgba(0,0,0,0.15);
       box-sizing: border-box;
       
-      /* フォント・文字設定（TA恋文） */
-      font-family: "ta-koibumi", "TA-Koibumi", "TA恋文", serif;
-      font-size: clamp(14px, 2.2vw, 22px);
-      color: #000000; /* 黒色 */
-      line-height: 2.0;
+      /* フォント・文字設定（サンプル画面・印刷時共通指定） */
+      font-family: ta-koibumi, "TA-Koibumi", "TA恋文", serif;
+      font-size: clamp(14px, 2.5vw, 22px);
+      color: #000000;
+      line-height: 2.2;
       word-break: break-all;
     }
 
@@ -139,6 +140,9 @@
       white-space: pre-wrap;
       width: 16em; /* 横16文字分 */
       max-width: 100%;
+      
+      /* 🌟 画面上の位置調整：左に15mm、下に70mm移動 */
+      transform: translate(-15mm, 70mm);
     }
 
     /* 🖨️ A4横向き専用 印刷設定 */
@@ -166,6 +170,7 @@
 
       .preview-section {
         width: 100%;
+        overflow: visible;
       }
 
       .letter-paper {
@@ -175,10 +180,16 @@
         aspect-ratio: auto;
         border: none;
         box-shadow: none;
-        padding: 40mm 50mm; /* 印刷時の印字開始位置調整 */
+        box-sizing: border-box;
         
-        font-family: "ta-koibumi", "TA-Koibumi", "TA恋文", serif;
-        font-size: 17pt;   /* 印刷時は正確に17pt */
+        /* 🌟 印刷時の位置調整：左へ15mm（50mm-15mm=35mm）、下へ70mm（40mm+70mm=110mm） */
+        padding-top: 110mm;
+        padding-left: 35mm;
+        padding-right: 50mm;
+        padding-bottom: 20mm;
+        
+        font-family: ta-koibumi, "TA-Koibumi", "TA恋文", serif;
+        font-size: 17pt;   /* 印刷時のフォントサイズ固定 */
         line-height: 2.2;
         
         -webkit-print-color-adjust: exact;
@@ -187,6 +198,8 @@
 
       .letter-body {
         width: 16em;
+        /* 印刷時はpadding側で位置調整するためtransformを解除 */
+        transform: none;
       }
     }
   </style>
