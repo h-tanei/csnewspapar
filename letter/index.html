@@ -116,4 +116,135 @@
     /* A4横向き比率 */
     .letter-paper {
       background-image: url('moca_letter.png');
-      background-size: 100
+      background-size: 100% 100%;
+      background-position: center;
+      background-repeat: no-repeat;
+      
+      width: 100%;
+      max-width: 650px;
+      aspect-ratio: 297 / 210; /* A4横の比率 */
+      padding: 10% 12%;       /* 位置調整用余白 */
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      box-sizing: border-box;
+      
+      /* フォント・文字設定（TA恋文） */
+      font-family: "ta-koibumi", "TA-Koibumi", "TA恋文", serif;
+      font-size: clamp(14px, 2.2vw, 22px);
+      color: #000000; /* 黒色 */
+      line-height: 2.0;
+      word-break: break-all;
+    }
+
+    .letter-body {
+      white-space: pre-wrap;
+      width: 16em; /* 横16文字分 */
+      max-width: 100%;
+    }
+
+    /* 🖨️ A4横向き専用 印刷設定 */
+    @page {
+      size: A4 landscape; /* 用紙をA4横向きに指定 */
+      margin: 0;
+    }
+
+    @media print {
+      body {
+        background: white;
+        padding: 0;
+        margin: 0;
+      }
+
+      .editor-section {
+        display: none;
+      }
+
+      .container {
+        display: block;
+        width: 100%;
+        margin: 0;
+      }
+
+      .preview-section {
+        width: 100%;
+      }
+
+      .letter-paper {
+        width: 297mm;
+        height: 210mm;
+        max-width: none;
+        aspect-ratio: auto;
+        border: none;
+        box-shadow: none;
+        padding: 40mm 50mm; /* 印刷時の印字開始位置調整 */
+        
+        font-family: "ta-koibumi", "TA-Koibumi", "TA恋文", serif;
+        font-size: 17pt;   /* 印刷時は正確に17pt */
+        line-height: 2.2;
+        
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      .letter-body {
+        width: 16em;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- 入力エリア -->
+    <div class="editor-section">
+      <h2>手紙の文字入力</h2>
+      
+      <div class="form-group">
+        <label for="letterText">本文（横16文字 × 縦3行 まで）</label>
+        <textarea 
+          id="letterText" 
+          maxlength="48" 
+          placeholder="ここに文章を入力してください（最大48文字）" 
+          oninput="handleInput()"></textarea>
+        
+        <div class="counter-info" id="counterBox">
+          <span>入力数: <strong id="currentCount">0</strong> / 48文字</span>
+          <span>残り: <strong id="remainCount">48</strong>文字</span>
+        </div>
+      </div>
+
+      <button class="btn-print" onclick="window.print()">🖨️ 印刷する / PDF出力</button>
+    </div>
+
+    <!-- プレビューエリア -->
+    <div class="preview-section">
+      <div class="letter-paper">
+        <div class="letter-body" id="previewBody">ここに文字が入ります。</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function handleInput() {
+      const input = document.getElementById('letterText');
+      const text = input.value;
+      const maxLength = 48;
+      
+      const currentLength = text.length;
+      const remain = maxLength - currentLength;
+
+      document.getElementById('currentCount').innerText = currentLength;
+      document.getElementById('remainCount').innerText = remain;
+
+      const counterBox = document.getElementById('counterBox');
+      if (remain <= 5) {
+        counterBox.classList.add('warning');
+      } else {
+        counterBox.classList.remove('warning');
+      }
+
+      const preview = document.getElementById('previewBody');
+      preview.innerText = text || 'ここに文字が入ります。';
+    }
+  </script>
+</body>
+</html>
