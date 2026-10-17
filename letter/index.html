@@ -111,7 +111,7 @@
       display: flex;
       justify-content: center;
       align-items: flex-start;
-      overflow: hidden; /* 移動指定によるはみ出し防止 */
+      overflow: hidden;
     }
 
     /* A4横向き比率 */
@@ -128,7 +128,7 @@
       box-shadow: 0 4px 12px rgba(0,0,0,0.15);
       box-sizing: border-box;
       
-      /* フォント・文字設定（サンプル画面・印刷時共通指定） */
+      /* フォント・文字設定 */
       font-family: ta-koibumi, "TA-Koibumi", "TA恋文", serif;
       font-size: clamp(14px, 2.5vw, 22px);
       color: #000000;
@@ -141,8 +141,8 @@
       width: 16em; /* 横16文字分 */
       max-width: 100%;
       
-      /* 🌟 画面上の位置調整：左に15mm、下に70mm移動 */
-      transform: translate(-15mm, 70mm);
+      /* 🌟 画面プレビュー位置設定：左に2mm、下に50mm移動 */
+      transform: translate(-2mm, 50mm);
     }
 
     /* 🖨️ A4横向き専用 印刷設定 */
@@ -182,14 +182,14 @@
         box-shadow: none;
         box-sizing: border-box;
         
-        /* 🌟 印刷時の位置調整：左へ15mm（50mm-15mm=35mm）、下へ70mm（40mm+70mm=110mm） */
-        padding-top: 110mm;
-        padding-left: 35mm;
+        /* 🌟 印刷位置調整：左に2mm移動（48mm）、下に50mm移動（90mm） */
+        padding-top: 90mm;
+        padding-left: 48mm;
         padding-right: 50mm;
         padding-bottom: 20mm;
         
         font-family: ta-koibumi, "TA-Koibumi", "TA恋文", serif;
-        font-size: 17pt;   /* 印刷時のフォントサイズ固定 */
+        font-size: 17pt;
         line-height: 2.2;
         
         -webkit-print-color-adjust: exact;
@@ -198,8 +198,7 @@
 
       .letter-body {
         width: 16em;
-        /* 印刷時はpadding側で位置調整するためtransformを解除 */
-        transform: none;
+        transform: none; /* 印刷時はpadding側で位置調整 */
       }
     }
   </style>
