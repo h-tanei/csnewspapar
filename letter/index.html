@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>手紙作成ツール</title>
-  <!-- Google Fonts（TA恋文がない環境向けのフォント設定） -->
+  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho&family=Zen+Antique&display=swap" rel="stylesheet">
@@ -20,7 +20,7 @@
     }
 
     .container {
-      max-width: 900px;
+      max-width: 1100px;
       margin: 0 auto;
       display: flex;
       gap: 30px;
@@ -98,47 +98,52 @@
 
     /* 右側：便箋プレビュー */
     .preview-section {
-      flex: 1;
-      min-width: 300px;
+      flex: 1.5;
+      min-width: 320px;
       display: flex;
       justify-content: center;
       align-items: flex-start;
     }
 
+    /* A4横向き比率（297mm : 210mm ≒ 1.414 : 1）の設定 */
     .letter-paper {
-      /* 🖼️ 便箋の背景画像（moca_letter.png）の読み込み設定 */
       background-image: url('moca_letter.png');
-      background-size: cover;          /* 便箋全体に綺麗に合わせる */
-      background-position: center;     /* 画像を中央配置 */
+      background-size: 100% 100%;
+      background-position: center;
       background-repeat: no-repeat;
       
-      padding: 40px;
-      border: 1px solid #ddd;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+      width: 100%;
+      max-width: 650px;
+      aspect-ratio: 297 / 210; /* A4横の比率 */
+      padding: 10% 12%; /* 画像に合わせて文字の開始余白を調整 */
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
       box-sizing: border-box;
       
-      /* フォント・文字設定 */
+      /* 画面表示用のフォント設定 */
       font-family: "TA恋文", "TA-Koibumi", "Zen Antique", "Shippori Mincho", serif;
-      font-size: 17pt;
-      color: #000000; /* 黒色 */
-      
-      /* 横16文字 × 縦3行の幅・高さ指定 */
-      width: calc(16em + 80px);
-      line-height: 1.8;
-      word-wrap: break-word;
-      overflow-wrap: break-word;
+      font-size: clamp(14px, 2.2vw, 22px); /* 画面サイズに応じて読みやすく自動伸縮 */
+      color: #000000;
+      line-height: 2.0;
+      word-break: break-all;
     }
 
     .letter-body {
       white-space: pre-wrap;
-      min-height: calc(17pt * 1.8 * 3);
+      width: 16em; /* 横16文字分の幅 */
+      max-width: 100%;
     }
 
-    /* 🖨️ 印刷設定 */
+    /* 🖨️ A4横向き専用 印刷設定 */
+    @page {
+      size: A4 landscape; /* 用紙をA4横向きに指定 */
+      margin: 0;
+    }
+
     @media print {
       body {
         background: white;
         padding: 0;
+        margin: 0;
       }
 
       .editor-section {
@@ -147,6 +152,8 @@
 
       .container {
         display: block;
+        width: 100%;
+        margin: 0;
       }
 
       .preview-section {
@@ -154,13 +161,22 @@
       }
 
       .letter-paper {
+        width: 297mm;
+        height: 210mm;
+        max-width: none;
+        aspect-ratio: auto;
         border: none;
         box-shadow: none;
-        padding: 0;
-        margin: 0;
-        /* 印刷時にも背景画像を出力させるための指定 */
+        padding: 40mm 50mm; /* A4印刷時の余白（画像のデザイン位置に合わせて調整可） */
+        font-size: 17pt;    /* 印刷時は正確に17pt指定 */
+        line-height: 2.2;
+        
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
+      }
+
+      .letter-body {
+        width: 16em;
       }
     }
   </style>
