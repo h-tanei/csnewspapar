@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>手紙作成ツール</title>
+  <!-- Google Fonts（TA恋文がない環境向けのフォント設定） -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho&family=Zen+Antique&display=swap" rel="stylesheet">
+
   <style>
     /* 全体スタイル */
     body {
@@ -101,19 +106,24 @@
     }
 
     .letter-paper {
-      background: #ffffff;
+      /* 🖼️ 便箋の背景画像（moca_letter.png）の読み込み設定 */
+      background-image: url('moca_letter.png');
+      background-size: cover;          /* 便箋全体に綺麗に合わせる */
+      background-position: center;     /* 画像を中央配置 */
+      background-repeat: no-repeat;
+      
       padding: 40px;
       border: 1px solid #ddd;
       box-shadow: 0 4px 10px rgba(0,0,0,0.08);
       box-sizing: border-box;
       
       /* フォント・文字設定 */
-      font-family: "TA恋文", "TA-Koibumi", "KouzanBrushFont", "Yu Mincho", "Hiragino Mincho ProN", serif;
+      font-family: "TA恋文", "TA-Koibumi", "Zen Antique", "Shippori Mincho", serif;
       font-size: 17pt;
       color: #000000; /* 黒色 */
       
       /* 横16文字 × 縦3行の幅・高さ指定 */
-      width: calc(16em + 80px); /* 16文字分 + 左右パディング */
+      width: calc(16em + 80px);
       line-height: 1.8;
       word-wrap: break-word;
       overflow-wrap: break-word;
@@ -121,7 +131,7 @@
 
     .letter-body {
       white-space: pre-wrap;
-      min-height: calc(17pt * 1.8 * 3); /* 3行分の高さを確保 */
+      min-height: calc(17pt * 1.8 * 3);
     }
 
     /* 🖨️ 印刷設定 */
@@ -132,7 +142,7 @@
       }
 
       .editor-section {
-        display: none; /* 入力画面を非表示 */
+        display: none;
       }
 
       .container {
@@ -148,6 +158,9 @@
         box-shadow: none;
         padding: 0;
         margin: 0;
+        /* 印刷時にも背景画像を出力させるための指定 */
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
       }
     }
   </style>
@@ -193,11 +206,9 @@
       const currentLength = text.length;
       const remain = maxLength - currentLength;
 
-      // カウンターの更新
       document.getElementById('currentCount').innerText = currentLength;
       document.getElementById('remainCount').innerText = remain;
 
-      // 残り文字数警告表示
       const counterBox = document.getElementById('counterBox');
       if (remain <= 5) {
         counterBox.classList.add('warning');
@@ -205,7 +216,6 @@
         counterBox.classList.remove('warning');
       }
 
-      // プレビューの更新
       const preview = document.getElementById('previewBody');
       preview.innerText = text || 'ここに文字が入ります。';
     }
