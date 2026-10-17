@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <title>未来新聞 発行システム</title>
+
+    <!-- HTMLをPDF化するためのライブラリ -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     
     <style>
         body {
@@ -85,7 +88,7 @@
         @keyframes blink { 50% { opacity: 0.4; } }
 
         /* =========================================
-           印刷用レイアウト（プレビュー・印刷時共通）
+           印刷・PDF生成用レイアウト
            ========================================= */
         #printArea {
             display: none;
@@ -95,12 +98,13 @@
             width: 210mm;
             height: 297mm;
             position: relative;
-            page-break-after: always;
             box-sizing: border-box;
             font-family: "Hiragino Mincho ProN", "MS 明朝", serif;
             overflow: hidden;
             background: white;
             margin: 0 auto;
+            page-break-after: always;
+            break-after: page;
         }
         
         .bg-img {
@@ -125,11 +129,11 @@
             white-space: nowrap;
         }
         
-        /* 下部文字列：5mm下に、5mm右に移動 */
+        /* 下部文字列：右に10mm移動 */
         .date-side {
             position: absolute;
             top: 156mm;
-            right: 18mm;
+            right: 8mm;
             width: 35mm;
             font-weight: bold;
             z-index: 2;
@@ -152,19 +156,6 @@
             object-fit: cover;
             z-index: 2;
         }
-
-        @media print {
-            body * { visibility: hidden; }
-            #printArea, #printArea * { visibility: visible; }
-            #printArea {
-                display: block !important;
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 210mm;
-            }
-            @page { size: A4 portrait; margin: 0; }
-        }
     </style>
 </head>
 <body>
@@ -185,12 +176,12 @@
             <button class="btn btn-orange" id="stopRecordBtn" style="margin-bottom: 0;" type="button">録音停止</button>
         </div>
 
-        <button class="btn btn-green" id="printBtn" disabled type="button">② 新聞印刷</button>
+        <button class="btn btn-green" id="printBtn" disabled type="button">② 新聞印刷 (PDF生成)</button>
         <button class="btn btn-purple" id="downloadBtn" disabled type="button">③ 音声の保存・共有</button>
         <button class="btn btn-red reset-margin" id="resetBtn" type="button">リセット</button>
     </div>
 
-    <!-- 印刷用領域 -->
+    <!-- 印刷・PDF表示用領域 -->
     <div id="printArea">
         <div class="page">
             <img src="bg1.png" class="bg-img">
@@ -277,8 +268,8 @@
             }
         });
 
-        // ② 新聞印刷ボタン
-        printBtn.addEventListener('click', () => {
+        // ② 新聞印刷ボタン（PDF自動生成処理）
+        printBtn.addEventListener('click', async () => {
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
 
@@ -306,10 +297,33 @@
             const printArea = document.getElementById('printArea');
             printArea.style.display = 'block';
 
-            setTimeout(() => {
-                window.print();
+            // ボタン表示変更
+            const originalBtnText = printBtn.textContent;
+            printBtn.textContent = "PDF作成中...";
+            printBtn.disabled = true;
+
+            // PDF生成設定
+            const opt = {
+                margin:       0,
+                filename:     'newspaper.pdf',
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true, logging: false },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            try {
+                // PDFを作成してBlobデータ化し、新しいタブで開く
+                const pdfBlob = await html2pdf().set(opt).from(printArea).output('blob');
+                const pdfUrl = URL.createObjectURL(pdfBlob);
+                window.open(pdfUrl, '_blank');
+            } catch (error) {
+                alert("PDF生成中にエラーが発生しました。");
+                console.error(error);
+            } finally {
                 printArea.style.display = 'none';
-            }, 500); 
+                printBtn.textContent = originalBtnText;
+                printBtn.disabled = false;
+            }
         });
 
         // ③ 音声の保存・共有ボタン
