@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>手紙作成ツール</title>
+  <style>
+    /* 全体スタイル */
+    body {
+      font-family: sans-serif;
+      background-color: #f4f6f8;
+      margin: 0;
+      padding: 20px;
+      color: #333;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      display: flex;
+      gap: 30px;
+      flex-wrap: wrap;
+    }
+
+    /* 左側：入力エリア */
+    .editor-section {
+      flex: 1;
+      min-width: 300px;
+      background: #ffffff;
+      padding: 25px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    }
+
+    .editor-section h2 {
+      margin-top: 0;
+      font-size: 1.2rem;
+      border-bottom: 2px solid #eee;
+      padding-bottom: 10px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 8px;
+      font-size: 0.9rem;
+    }
+
+    .counter-info {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      color: #666;
+      margin-top: 5px;
+    }
+
+    .counter-info.warning {
+      color: #e74c3c;
+      font-weight: bold;
+    }
+
+    textarea {
+      width: 100%;
+      height: 120px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      box-sizing: border-box;
+      font-size: 1rem;
+      line-height: 1.5;
+      resize: none;
+    }
+
+    .btn-print {
+      width: 100%;
+      background-color: #2c3e50;
+      color: white;
+      border: none;
+      padding: 12px;
+      font-size: 1rem;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .btn-print:hover {
+      background-color: #1a252f;
+    }
+
+    /* 右側：便箋プレビュー */
+    .preview-section {
+      flex: 1;
+      min-width: 300px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    .letter-paper {
+      background: #ffffff;
+      padding: 40px;
+      border: 1px solid #ddd;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+      box-sizing: border-box;
+      
+      /* フォント・文字設定 */
+      font-family: "TA恋文", "TA-Koibumi", "KouzanBrushFont", "Yu Mincho", "Hiragino Mincho ProN", serif;
+      font-size: 17pt;
+      color: #000000; /* 黒色 */
+      
+      /* 横16文字 × 縦3行の幅・高さ指定 */
+      width: calc(16em + 80px); /* 16文字分 + 左右パディング */
+      line-height: 1.8;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+
+    .letter-body {
+      white-space: pre-wrap;
+      min-height: calc(17pt * 1.8 * 3); /* 3行分の高さを確保 */
+    }
+
+    /* 🖨️ 印刷設定 */
+    @media print {
+      body {
+        background: white;
+        padding: 0;
+      }
+
+      .editor-section {
+        display: none; /* 入力画面を非表示 */
+      }
+
+      .container {
+        display: block;
+      }
+
+      .preview-section {
+        width: 100%;
+      }
+
+      .letter-paper {
+        border: none;
+        box-shadow: none;
+        padding: 0;
+        margin: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- 入力エリア -->
+    <div class="editor-section">
+      <h2>手紙の文字入力</h2>
+      
+      <div class="form-group">
+        <label for="letterText">本文（横16文字 × 縦3行 まで）</label>
+        <textarea 
+          id="letterText" 
+          maxlength="48" 
+          placeholder="ここに文章を入力してください（最大48文字）" 
+          oninput="handleInput()"></textarea>
+        
+        <div class="counter-info" id="counterBox">
+          <span>入力数: <strong id="currentCount">0</strong> / 48文字</span>
+          <span>残り: <strong id="remainCount">48</strong>文字</span>
+        </div>
+      </div>
+
+      <button class="btn-print" onclick="window.print()">🖨️ 印刷する / PDF出力</button>
+    </div>
+
+    <!-- プレビューエリア -->
+    <div class="preview-section">
+      <div class="letter-paper">
+        <div class="letter-body" id="previewBody">ここに文字が入ります。</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function handleInput() {
+      const input = document.getElementById('letterText');
+      const text = input.value;
+      const maxLength = 48;
+      
+      const currentLength = text.length;
+      const remain = maxLength - currentLength;
+
+      // カウンターの更新
+      document.getElementById('currentCount').innerText = currentLength;
+      document.getElementById('remainCount').innerText = remain;
+
+      // 残り文字数警告表示
+      const counterBox = document.getElementById('counterBox');
+      if (remain <= 5) {
+        counterBox.classList.add('warning');
+      } else {
+        counterBox.classList.remove('warning');
+      }
+
+      // プレビューの更新
+      const preview = document.getElementById('previewBody');
+      preview.innerText = text || 'ここに文字が入ります。';
+    }
+  </script>
+</body>
+</html>
