@@ -17,6 +17,9 @@
     })(document);
   </script>
 
+  <!-- HTMLをPDF化するためのライブラリ -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
   <style>
     /* 全体スタイル */
     body {
@@ -104,6 +107,11 @@
       background-color: #1a252f;
     }
 
+    .btn-print:disabled {
+      background-color: #95a5a6;
+      cursor: not-allowed;
+    }
+
     /* 右側：便箋プレビュー */
     .preview-section {
       flex: 1.5;
@@ -111,7 +119,7 @@
       display: flex;
       justify-content: center;
       align-items: flex-start;
-      overflow: hidden; /* 移動指定によるはみ出し防止 */
+      overflow: hidden;
     }
 
     /* A4横向き比率 */
@@ -128,11 +136,11 @@
       box-shadow: 0 4px 12px rgba(0,0,0,0.15);
       box-sizing: border-box;
       
-      /* フォント・文字設定（サンプル画面・印刷時共通指定） */
+      /* フォント・文字設定 */
       font-family: ta-koibumi, "TA-Koibumi", "TA恋文", serif;
       font-size: clamp(14px, 2.5vw, 22px);
       color: #000000;
-      line-height: 1.1; /* 🌟 行間を2.2から約半分の1.1に変更 */
+      line-height: 1.1;
       word-break: break-all;
     }
 
@@ -140,67 +148,36 @@
       white-space: pre-wrap;
       width: 16em; /* 横16文字分 */
       max-width: 100%;
-      
-      /* 🌟 画面上の位置調整：さらに3mm上へ移動 (110mm -> 107mm) */
       transform: translate(-17mm, 107mm);
     }
 
-    /* 🖨️ A4横向き専用 印刷設定 */
-    @page {
-      size: A4 landscape; /* 用紙をA4横向きに指定 */
-      margin: 0;
+    /* PDF生成用（出力時の実寸大用スタイル） */
+    #pdfPrintTarget {
+      display: none;
+      width: 297mm;
+      height: 209.5mm; /* 210mmから少し削って2ページ目への溢れを防止 */
+      background-image: url('moca_letter.png');
+      background-size: 100% 100%;
+      background-position: center;
+      background-repeat: no-repeat;
+      box-sizing: border-box;
+      
+      padding-top: 147mm;
+      padding-left: 33mm;
+      padding-right: 50mm;
+      padding-bottom: 20mm;
+      
+      font-family: ta-koibumi, "TA-Koibumi", "TA恋文", serif;
+      font-size: 17pt;
+      line-height: 1.1;
+      color: #000000;
+      word-break: break-all;
     }
 
-    @media print {
-      body {
-        background: white;
-        padding: 0;
-        margin: 0;
-      }
-
-      .editor-section {
-        display: none;
-      }
-
-      .container {
-        display: block;
-        width: 100%;
-        margin: 0;
-      }
-
-      .preview-section {
-        width: 100%;
-        overflow: visible;
-      }
-
-      .letter-paper {
-        width: 297mm;
-        height: 210mm;
-        max-width: none;
-        aspect-ratio: auto;
-        border: none;
-        box-shadow: none;
-        box-sizing: border-box;
-        
-        /* 🌟 印刷時の位置調整：さらに3mm上へ移動 (150mm -> 147mm) */
-        padding-top: 147mm;
-        padding-left: 33mm;
-        padding-right: 50mm;
-        padding-bottom: 20mm;
-        
-        font-family: ta-koibumi, "TA-Koibumi", "TA恋文", serif;
-        font-size: 17pt;   /* 印刷時のフォントサイズ固定 */
-        line-height: 1.1; /* 🌟 印刷時も行間1.1に合わせる */
-        
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-      }
-
-      .letter-body {
-        width: 16em;
-        /* 印刷時はpadding側で位置調整するためtransformを解除 */
-        transform: none;
-      }
+    #pdfPrintTarget .letter-body-pdf {
+      white-space: pre-wrap;
+      width: 16em;
+      transform: none;
     }
   </style>
 </head>
@@ -225,7 +202,7 @@
         </div>
       </div>
 
-      <button class="btn-print" onclick="window.print()">🖨️ 印刷する / PDF出力</button>
+      <button class="btn-print" id="printBtn" onclick="generatePDF()">🖨️ 印刷する / PDF出力</button>
     </div>
 
     <!-- プレビューエリア -->
@@ -234,6 +211,11 @@
         <div class="letter-body" id="previewBody">ここに文字が入ります。</div>
       </div>
     </div>
+  </div>
+
+  <!-- PDF生成専用非表示エリア -->
+  <div id="pdfPrintTarget">
+    <div class="letter-body-pdf" id="pdfBody">ここに文字が入ります。</div>
   </div>
 
   <script>
@@ -257,6 +239,68 @@
 
       const preview = document.getElementById('previewBody');
       preview.innerText = text || 'ここに文字が入ります。';
+    }
+
+    // 全画像の読み込み完了を保証する関数
+    function waitForImages(container) {
+      const imgs = container.querySelectorAll('img');
+      const promises = Array.from(imgs).map(img => {
+        if (img.complete && img.naturalHeight !== 0) return Promise.resolve();
+        return new Promise(resolve => {
+          img.onload = resolve;
+          img.onerror = resolve;
+        });
+      });
+      return Promise.all(promises);
+    }
+
+    // PDF生成処理（iPad Webアプリモード対応）
+    async function generatePDF() {
+      const printBtn = document.getElementById('printBtn');
+      const text = document.getElementById('letterText').value;
+      const pdfBody = document.getElementById('pdfBody');
+      const pdfTarget = document.getElementById('pdfPrintTarget');
+
+      // 本文をPDF領域に同期
+      pdfBody.innerText = text || 'ここに文字が入ります。';
+
+      // 一時的にターゲットを表示
+      pdfTarget.style.display = 'block';
+
+      const originalBtnText = printBtn.textContent;
+      printBtn.textContent = "PDF作成中...";
+      printBtn.disabled = true;
+
+      try {
+        // 画像およびフォントの描画待機
+        await waitForImages(pdfTarget);
+        await new Promise(resolve => setTimeout(resolve, 400));
+
+        // A4横向き（Landscape）用のPDF設定
+        const opt = {
+          margin:       0,
+          filename:     'letter.pdf',
+          image:        { type: 'jpeg', quality: 0.98 },
+          html2canvas:  { scale: 2, useCORS: true, logging: false, allowTaint: true },
+          jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }, // A4横向き指定
+          pagebreak:    { mode: ['css', 'legacy'] }
+        };
+
+        // PDF生成
+        const pdfBlob = await html2pdf().set(opt).from(pdfTarget).output('blob');
+        const pdfUrl = URL.createObjectURL(pdfBlob);
+
+        // iPad Webアプリ（スタンドアロン）でポップアップブロックを回避して画面遷移
+        window.location.href = pdfUrl;
+
+      } catch (error) {
+        alert("PDFの生成に失敗しました。");
+        console.error(error);
+      } finally {
+        pdfTarget.style.display = 'none';
+        printBtn.textContent = originalBtnText;
+        printBtn.disabled = false;
+      }
     }
   </script>
 </body>
