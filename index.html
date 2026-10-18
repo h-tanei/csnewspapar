@@ -176,7 +176,7 @@
             <button class="btn btn-orange" id="stopRecordBtn" style="margin-bottom: 0;" type="button">録音停止</button>
         </div>
 
-        <button class="btn btn-green" id="printBtn" disabled type="button">② 新聞印刷 (PDF生成)</button>
+        <button class="btn btn-green" id="printBtn" disabled type="button">② 新聞印刷 (PDF表示)</button>
         <button class="btn btn-purple" id="downloadBtn" disabled type="button">③ 音声の保存・共有</button>
         <button class="btn btn-red reset-margin" id="resetBtn" type="button">リセット</button>
     </div>
@@ -268,7 +268,20 @@
             }
         });
 
-        // ② 新聞印刷ボタン（PDF自動生成処理・iPadポップアップ対策済み）
+        // 全画像の読み込み完了を保証する関数
+        function waitForImages(container) {
+            const imgs = container.querySelectorAll('img');
+            const promises = Array.from(imgs).map(img => {
+                if (img.complete && img.naturalHeight !== 0) return Promise.resolve();
+                return new Promise(resolve => {
+                    img.onload = resolve;
+                    img.onerror = resolve;
+                });
+            });
+            return Promise.all(promises);
+        }
+
+        // ② 新聞印刷ボタン（Webアプリモード対応型PDF生成処理）
         printBtn.addEventListener('click', async () => {
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
@@ -297,42 +310,32 @@
             const printArea = document.getElementById('printArea');
             printArea.style.display = 'block';
 
-            // iPadのポップアップブロック対策：クリック直後に空のタブを確保
-            const printWindow = window.open('', '_blank');
-            if (printWindow) {
-                printWindow.document.write('<html><head><title>PDF生成中</title></head><body style="font-family:sans-serif; text-align:center; padding-top:50px;"><h2>PDFを作成しています...</h2><p>そのまましばらくお待ちください。</p></body></html>');
-            }
-
             const originalBtnText = printBtn.textContent;
             printBtn.textContent = "PDF作成中...";
             printBtn.disabled = true;
 
-            // DOM描画および画像の読み込み完了を確実に待つ
-            await new Promise(resolve => setTimeout(resolve, 800));
-
-            const opt = {
-                margin:       0,
-                filename:     'newspaper.pdf',
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true, logging: false, allowTaint: true },
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
-
             try {
+                await waitForImages(printArea);
+                await new Promise(resolve => setTimeout(resolve, 300));
+
+                const opt = {
+                    margin:       0,
+                    filename:     'newspaper.pdf',
+                    image:        { type: 'jpeg', quality: 0.98 },
+                    html2canvas:  { scale: 2, useCORS: true, logging: false, allowTaint: true },
+                    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                };
+
+                // PDF生成
                 const pdfBlob = await html2pdf().set(opt).from(printArea).output('blob');
                 const pdfUrl = URL.createObjectURL(pdfBlob);
 
-                if (printWindow) {
-                    printWindow.location.href = pdfUrl;
-                } else {
-                    const a = document.createElement('a');
-                    a.href = pdfUrl;
-                    a.download = 'newspaper.pdf';
-                    a.click();
-                }
+                // Webアプリモード（スタンドアロン）でポップアップブロックを完全に回避する方法：
+                // window.open を使わず直接現在の画面をPDF表示に切り替える
+                window.location.href = pdfUrl;
+
             } catch (error) {
-                if (printWindow) printWindow.close();
-                alert("PDF生成中にエラーが発生しました。");
+                alert("PDFの生成に失敗しました。");
                 console.error(error);
             } finally {
                 printArea.style.display = 'none';
@@ -362,3 +365,31 @@
                 const a = document.createElement('a');
                 a.href = audioUrl;
                 a.download = fileName;
+                a.click();
+                URL.revokeObjectURL(audioUrl);
+            }
+        });
+
+        // リセットボタン
+        resetBtn.addEventListener('click', () => {
+            if (confirm("入力データと録音をリセットしますか？")) {
+                if (capturedPhotoUrl) {
+                    URL.revokeObjectURL(capturedPhotoUrl);
+                }
+                capturedPhotoUrl = null;
+                recordedAudioBlob = null;
+                audioChunks = [];
+                cameraInput.value = '';
+
+                previewImage.src = '';
+                previewImage.style.display = 'none';
+                previewText.style.display = 'block';
+
+                recordingArea.style.display = 'none';
+                printBtn.disabled = true;
+                downloadBtn.disabled = true;
+            }
+        });
+    </script>
+</body>
+</html>
