@@ -96,7 +96,7 @@
 
         .page {
             width: 210mm;
-            height: 297mm;
+            height: 296.5mm; /* 297mmよりわずかに小さくしてはみ出しを防止 */
             position: relative;
             box-sizing: border-box;
             font-family: "Hiragino Mincho ProN", "MS 明朝", serif;
@@ -281,7 +281,7 @@
             return Promise.all(promises);
         }
 
-        // ② 新聞印刷ボタン（Webアプリモード対応型PDF生成処理）
+        // ② 新聞印刷ボタン（改ページ最適化型PDF生成）
         printBtn.addEventListener('click', async () => {
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
@@ -323,15 +323,15 @@
                     filename:     'newspaper.pdf',
                     image:        { type: 'jpeg', quality: 0.98 },
                     html2canvas:  { scale: 2, useCORS: true, logging: false, allowTaint: true },
-                    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                    pagebreak:    { mode: ['css', 'legacy'] } // 改ページ指定の重複生成を厳格化
                 };
 
                 // PDF生成
                 const pdfBlob = await html2pdf().set(opt).from(printArea).output('blob');
                 const pdfUrl = URL.createObjectURL(pdfBlob);
 
-                // Webアプリモード（スタンドアロン）でポップアップブロックを完全に回避する方法：
-                // window.open を使わず直接現在の画面をPDF表示に切り替える
+                // 直接画面切り替えでPDF表示
                 window.location.href = pdfUrl;
 
             } catch (error) {
