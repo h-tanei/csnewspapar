@@ -146,7 +146,7 @@
         .date-side-year { font-size: 14.4pt; }
         .date-side-day { font-size: 21.6pt; }
         
-        /* 写真：1mm下へ移動（top: 99mm） */
+        /* 写真 */
         .photo-frame {
             position: absolute;
             top: 99mm;
@@ -268,7 +268,7 @@
             }
         });
 
-        // ② 新聞印刷ボタン（PDF自動生成処理）
+        // ② 新聞印刷ボタン（PDF自動生成処理・iPadポップアップ対策済み）
         printBtn.addEventListener('click', async () => {
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
@@ -297,26 +297,41 @@
             const printArea = document.getElementById('printArea');
             printArea.style.display = 'block';
 
-            // ボタン表示変更
+            // iPadのポップアップブロック対策：クリック直後に空のタブを確保
+            const printWindow = window.open('', '_blank');
+            if (printWindow) {
+                printWindow.document.write('<html><head><title>PDF生成中</title></head><body style="font-family:sans-serif; text-align:center; padding-top:50px;"><h2>PDFを作成しています...</h2><p>そのまましばらくお待ちください。</p></body></html>');
+            }
+
             const originalBtnText = printBtn.textContent;
             printBtn.textContent = "PDF作成中...";
             printBtn.disabled = true;
 
-            // PDF生成設定
+            // DOM描画および画像の読み込み完了を確実に待つ
+            await new Promise(resolve => setTimeout(resolve, 800));
+
             const opt = {
                 margin:       0,
                 filename:     'newspaper.pdf',
                 image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true, logging: false },
+                html2canvas:  { scale: 2, useCORS: true, logging: false, allowTaint: true },
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
             try {
-                // PDFを作成してBlobデータ化し、新しいタブで開く
                 const pdfBlob = await html2pdf().set(opt).from(printArea).output('blob');
                 const pdfUrl = URL.createObjectURL(pdfBlob);
-                window.open(pdfUrl, '_blank');
+
+                if (printWindow) {
+                    printWindow.location.href = pdfUrl;
+                } else {
+                    const a = document.createElement('a');
+                    a.href = pdfUrl;
+                    a.download = 'newspaper.pdf';
+                    a.click();
+                }
             } catch (error) {
+                if (printWindow) printWindow.close();
                 alert("PDF生成中にエラーが発生しました。");
                 console.error(error);
             } finally {
@@ -347,31 +362,3 @@
                 const a = document.createElement('a');
                 a.href = audioUrl;
                 a.download = fileName;
-                a.click();
-                URL.revokeObjectURL(audioUrl);
-            }
-        });
-
-        // リセットボタン
-        resetBtn.addEventListener('click', () => {
-            if (confirm("入力データと録音をリセットしますか？")) {
-                if (capturedPhotoUrl) {
-                    URL.revokeObjectURL(capturedPhotoUrl);
-                }
-                capturedPhotoUrl = null;
-                recordedAudioBlob = null;
-                audioChunks = [];
-                cameraInput.value = '';
-
-                previewImage.src = '';
-                previewImage.style.display = 'none';
-                previewText.style.display = 'block';
-
-                recordingArea.style.display = 'none';
-                printBtn.disabled = true;
-                downloadBtn.disabled = true;
-            }
-        });
-    </script>
-</body>
-</html>
