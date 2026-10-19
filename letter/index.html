@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>手紙作成ツール</title>
 
-  <!-- 🌟 Adobe Fonts (TA恋文 / Kit ID: kgd1wxy) -->
+  <!-- 🌟 Adobe Fonts (TA恋心 / Kit ID: kgd1wxy) -->
   <script>
     (function(d) {
       var config = {
@@ -130,15 +130,15 @@
       width: 100%;
       max-width: 650px;
       aspect-ratio: 297 / 210; /* A4横の比率 */
-      
-      /* 🌟 変更：中の文字を配置する基準（親要素）にする */
       position: relative; 
+      container-type: inline-size; /* 画面幅に応じた文字縮尺用 */
       box-shadow: 0 4px 12px rgba(0,0,0,0.15);
       box-sizing: border-box;
       
-      /* 🌟 フォント修正：Adobe指定の正確な書き方に統一 */
-      font-family: "ta-koibumi", sans-serif;
-      font-size: clamp(14px, 2.5vw, 22px);
+      /* 🌟 修正：Adobe Fonts の「TA恋心」の正確な指定に変更 */
+      font-family: ta-koigokoro, sans-serif;
+      /* 🌟 修正：印刷時(17pt/297mm)と比率を完全一致させるフォントサイズ計算（便箋幅の約2.02%） */
+      font-size: 2.02cqi;
       color: #000000;
       line-height: 1.7;
       word-break: break-all;
@@ -149,10 +149,10 @@
       width: 16em; /* 横16文字分 */
       max-width: 100%;
       
-      /* 🌟 画面上の位置調整：印刷時の位置（147mm/33mm）を％に計算して同期 */
+      /* 画面上の位置調整：印刷時の位置（147mm/33mm）と同期 */
       position: absolute;
-      top: 70%;      /* 147mm ÷ 210mm(A4縦幅) = 70% */
-      left: 11.11%;  /* 33mm ÷ 297mm(A4横幅) = 約11.11% */
+      top: 70%;      /* 147mm ÷ 210mm = 70% */
+      left: 11.11%;  /* 33mm ÷ 297mm = 約11.11% */
     }
 
     /* 🖨️ A4横向き専用 印刷設定 */
@@ -192,13 +192,12 @@
         box-shadow: none;
         box-sizing: border-box;
         
-        /* 印刷時の完璧な位置調整（そのまま維持） */
+        /* 印刷時の完璧な位置調整 */
         padding-top: 147mm;
         padding-left: 33mm;
         padding-right: 50mm;
         padding-bottom: 20mm;
         
-        /* 🌟 修正：フォントの再指定を削除（通常設定を引き継ぐことでバグを防ぐ） */
         font-size: 17pt;   
         line-height: 1.7; 
         
@@ -208,7 +207,6 @@
 
       .letter-body {
         width: 16em;
-        /* 🌟 修正：印刷時は親のpaddingに位置を任せるため、画面用のabsoluteを解除 */
         position: relative;
         top: auto;
         left: auto;
@@ -237,7 +235,6 @@
         </div>
       </div>
 
-      <!-- フォント読み込み待機処理付きの印刷ボタン -->
       <button class="btn-print" onclick="printLetter()">🖨️ 印刷する / PDF出力</button>
     </div>
 
@@ -272,7 +269,6 @@
       preview.innerText = text || 'ここに文字が入ります。';
     }
 
-    // フォントの読み込みを待ってから印刷する関数
     async function printLetter() {
       const btn = document.querySelector('.btn-print');
       const originalText = btn.innerText;
@@ -284,7 +280,7 @@
         if (document.fonts) {
           await document.fonts.ready;
         }
-        await new Promise(resolve => setTimeout(resolve, 600));
+        await new Promise(resolve => setTimeout(resolve, 800));
 
         window.print();
       } catch (e) {
