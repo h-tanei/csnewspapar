@@ -138,10 +138,21 @@
       box-sizing: border-box;
       
       font-family: ta-koigokoro, sans-serif;
+      
+      /* 📱 スマホ時の文字サイズ（完璧だった設定） */
       font-size: 1.7cqi;
+      
       color: #000000;
       line-height: 1.7;
       word-break: break-all;
+    }
+
+    /* 💻 PC時（画面幅768px以上）のサンプル文字サイズのみ調整 */
+    @media (min-width: 768px) {
+      .preview-paper {
+        /* PCでは少し小さく調整。もしこれでも大きければ 1.3 や 1.2 に減らしてください */
+        font-size: 1.4cqi; 
+      }
     }
 
     .preview-body {
@@ -155,13 +166,13 @@
 
     /* =========================================
        PDF生成用の隠し領域（ミリ単位で厳密に固定）
+       ※ここの設定は完璧なので一切変更していません
        ========================================= */
     #pdfArea {
       display: none;
     }
 
     .pdf-page {
-      /* html2pdf.jsに渡すためのA4横サイズのキャンバス */
       width: 297mm;
       height: 210mm;
       position: relative;
@@ -183,14 +194,13 @@
     .pdf-body {
       position: absolute;
       z-index: 2;
-      /* 印刷時の完璧な位置指定 */
       top: 147mm;
       left: 33mm;
       
       width: 16em;
       font-family: ta-koigokoro, sans-serif;
       font-size: 17pt;
-      font-weight: bold; /* PDF上でも太字にする */
+      font-weight: bold; 
       line-height: 1.7;
       color: #000000;
       white-space: pre-wrap;
@@ -239,7 +249,6 @@
   </div>
 
   <script>
-    // テキスト入力の連動処理
     function handleInput() {
       const input = document.getElementById('letterText');
       const text = input.value;
@@ -260,12 +269,10 @@
 
       const displayText = text || 'ここに文字が入ります。';
       
-      // 画面用とPDF用の両方にテキストを反映
       document.getElementById('previewBody').innerText = displayText;
       document.getElementById('pdfTextBody').innerText = displayText;
     }
 
-    // 画像の読み込み完了を待つ関数（背景画像用）
     function waitForImages(container) {
       const imgs = container.querySelectorAll('img');
       const promises = Array.from(imgs).map(img => {
@@ -278,7 +285,6 @@
       return Promise.all(promises);
     }
 
-    // 🌟 PDF生成処理
     document.getElementById('printBtn').addEventListener('click', async () => {
       const btn = document.getElementById('printBtn');
       const originalText = btn.innerText;
@@ -290,29 +296,24 @@
       pdfArea.style.display = 'block';
 
       try {
-        // 1. Webフォントの読み込み待機
         if (document.fonts) {
           await document.fonts.ready;
         }
         
-        // 2. 背景画像とフォントの反映待機（少し余裕を持たせる）
         await waitForImages(pdfArea);
         await new Promise(resolve => setTimeout(resolve, 800));
 
-        // 3. html2pdf.js の設定（A4横向き）
         const opt = {
           margin:       0,
           filename:     'letter.pdf',
           image:        { type: 'jpeg', quality: 0.98 },
           html2canvas:  { scale: 2, useCORS: true, logging: false },
-          jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' } // landscape=横向き
+          jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
         };
 
-        // 4. PDF生成と画面遷移
         const pdfBlob = await html2pdf().set(opt).from(pdfArea).output('blob');
         const pdfUrl = URL.createObjectURL(pdfBlob);
         
-        // 同じタブでPDFを表示する（iOS等の挙動を安定させるため）
         window.location.href = pdfUrl;
 
       } catch (error) {
