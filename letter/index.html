@@ -17,6 +17,9 @@
     })(document);
   </script>
 
+  <!-- 🌟 HTMLをPDF化するためのライブラリ（ヘッダーフッター除去・端末差異解消のため） -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
   <style>
     /* 全体スタイル */
     body {
@@ -110,7 +113,7 @@
       cursor: not-allowed;
     }
 
-    /* 右側：便箋プレビュー */
+    /* 右側：画面用プレビュー（レスポンシブ） */
     .preview-section {
       flex: 1.5;
       min-width: 320px;
@@ -120,8 +123,7 @@
       overflow: hidden;
     }
 
-    /* A4横向き比率 */
-    .letter-paper {
+    .preview-paper {
       background-image: url('moca_letter.png');
       background-size: 100% 100%;
       background-position: center;
@@ -129,93 +131,70 @@
       
       width: 100%;
       max-width: 650px;
-      aspect-ratio: 297 / 210; /* A4横の比率 */
+      aspect-ratio: 297 / 210;
       position: relative; 
       container-type: inline-size;
       box-shadow: 0 4px 12px rgba(0,0,0,0.15);
       box-sizing: border-box;
       
       font-family: ta-koigokoro, sans-serif;
-      
-      /* 🌟 修正1：サンプル画面の文字を少し小さくしました（元 2.02cqi） */
-      /* ※さらに小さくしたい場合は 1.6 や 1.5 に、大きくしたい場合は 1.8 などに変更してください */
       font-size: 1.7cqi;
-      
       color: #000000;
       line-height: 1.7;
       word-break: break-all;
     }
 
-    .letter-body {
+    .preview-body {
       white-space: pre-wrap;
-      width: 16em; /* 横16文字分 */
+      width: 16em;
       max-width: 100%;
-      
-      /* 画面上の位置調整 */
       position: absolute;
       top: 70%;      
       left: 11.11%;  
     }
 
-    /* 🖨️ A4横向き専用 印刷設定 */
-    @page {
-      size: A4 landscape;
+    /* =========================================
+       PDF生成用の隠し領域（ミリ単位で厳密に固定）
+       ========================================= */
+    #pdfArea {
+      display: none;
+    }
+
+    .pdf-page {
+      /* html2pdf.jsに渡すためのA4横サイズのキャンバス */
+      width: 297mm;
+      height: 210mm;
+      position: relative;
+      box-sizing: border-box;
+      background-color: white;
+      overflow: hidden;
       margin: 0;
     }
 
-    @media print {
-      body {
-        background: white;
-        padding: 0;
-        margin: 0;
-      }
+    .pdf-bg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 297mm;
+      height: 210mm;
+      z-index: 1;
+    }
 
-      .editor-section {
-        display: none;
-      }
-
-      .container {
-        display: block;
-        width: 100%;
-        margin: 0;
-      }
-
-      .preview-section {
-        width: 100%;
-        overflow: visible;
-      }
-
-      .letter-paper {
-        width: 297mm;
-        height: 210mm;
-        max-width: none;
-        aspect-ratio: auto;
-        border: none;
-        box-shadow: none;
-        box-sizing: border-box;
-        
-        /* 印刷時の完璧な位置調整 */
-        padding-top: 147mm;
-        padding-left: 33mm;
-        padding-right: 50mm;
-        padding-bottom: 20mm;
-        
-        /* 🌟 修正2：印刷時の文字を太字にする設定を追加 */
-        font-weight: bold;
-        
-        font-size: 17pt;   /* サイズはそのまま */
-        line-height: 1.7; 
-        
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-      }
-
-      .letter-body {
-        width: 16em;
-        position: relative;
-        top: auto;
-        left: auto;
-      }
+    .pdf-body {
+      position: absolute;
+      z-index: 2;
+      /* 印刷時の完璧な位置指定 */
+      top: 147mm;
+      left: 33mm;
+      
+      width: 16em;
+      font-family: ta-koigokoro, sans-serif;
+      font-size: 17pt;
+      font-weight: bold; /* PDF上でも太字にする */
+      line-height: 1.7;
+      color: #000000;
+      white-space: pre-wrap;
+      word-break: break-all;
     }
   </style>
 </head>
@@ -240,18 +219,27 @@
         </div>
       </div>
 
-      <button class="btn-print" onclick="printLetter()">🖨️ 印刷する / PDF出力</button>
+      <button class="btn-print" id="printBtn">🖨️ PDFを出力する</button>
     </div>
 
-    <!-- プレビューエリア -->
+    <!-- 画面用プレビューエリア -->
     <div class="preview-section">
-      <div class="letter-paper">
-        <div class="letter-body" id="previewBody">ここに文字が入ります。</div>
+      <div class="preview-paper">
+        <div class="preview-body" id="previewBody">ここに文字が入ります。</div>
       </div>
     </div>
   </div>
 
+  <!-- 🌟 PDF生成用の隠し領域 -->
+  <div id="pdfArea">
+    <div class="pdf-page">
+      <img src="moca_letter.png" class="pdf-bg" id="pdfBgImage">
+      <div class="pdf-body" id="pdfTextBody">ここに文字が入ります。</div>
+    </div>
+  </div>
+
   <script>
+    // テキスト入力の連動処理
     function handleInput() {
       const input = document.getElementById('letterText');
       const text = input.value;
@@ -270,32 +258,72 @@
         counterBox.classList.remove('warning');
       }
 
-      const preview = document.getElementById('previewBody');
-      preview.innerText = text || 'ここに文字が入ります。';
+      const displayText = text || 'ここに文字が入ります。';
+      
+      // 画面用とPDF用の両方にテキストを反映
+      document.getElementById('previewBody').innerText = displayText;
+      document.getElementById('pdfTextBody').innerText = displayText;
     }
 
-    async function printLetter() {
-      const btn = document.querySelector('.btn-print');
+    // 画像の読み込み完了を待つ関数（背景画像用）
+    function waitForImages(container) {
+      const imgs = container.querySelectorAll('img');
+      const promises = Array.from(imgs).map(img => {
+        if (img.complete && img.naturalHeight !== 0) return Promise.resolve();
+        return new Promise(resolve => {
+          img.onload = resolve;
+          img.onerror = resolve;
+        });
+      });
+      return Promise.all(promises);
+    }
+
+    // 🌟 PDF生成処理
+    document.getElementById('printBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('printBtn');
       const originalText = btn.innerText;
       
-      btn.innerText = 'フォント準備中...';
+      btn.innerText = 'PDF作成中...';
       btn.disabled = true;
 
+      const pdfArea = document.getElementById('pdfArea');
+      pdfArea.style.display = 'block';
+
       try {
+        // 1. Webフォントの読み込み待機
         if (document.fonts) {
           await document.fonts.ready;
         }
+        
+        // 2. 背景画像とフォントの反映待機（少し余裕を持たせる）
+        await waitForImages(pdfArea);
         await new Promise(resolve => setTimeout(resolve, 800));
 
-        window.print();
-      } catch (e) {
-        console.error('印刷エラー:', e);
-        window.print();
+        // 3. html2pdf.js の設定（A4横向き）
+        const opt = {
+          margin:       0,
+          filename:     'letter.pdf',
+          image:        { type: 'jpeg', quality: 0.98 },
+          html2canvas:  { scale: 2, useCORS: true, logging: false },
+          jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' } // landscape=横向き
+        };
+
+        // 4. PDF生成と画面遷移
+        const pdfBlob = await html2pdf().set(opt).from(pdfArea).output('blob');
+        const pdfUrl = URL.createObjectURL(pdfBlob);
+        
+        // 同じタブでPDFを表示する（iOS等の挙動を安定させるため）
+        window.location.href = pdfUrl;
+
+      } catch (error) {
+        alert("PDFの生成に失敗しました。");
+        console.error(error);
       } finally {
+        pdfArea.style.display = 'none';
         btn.innerText = originalText;
         btn.disabled = false;
       }
-    }
+    });
   </script>
 </body>
 </html>
