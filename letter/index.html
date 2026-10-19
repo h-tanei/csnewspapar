@@ -131,14 +131,16 @@
       max-width: 650px;
       aspect-ratio: 297 / 210; /* A4横の比率 */
       position: relative; 
-      container-type: inline-size; /* 画面幅に応じた文字縮尺用 */
+      container-type: inline-size;
       box-shadow: 0 4px 12px rgba(0,0,0,0.15);
       box-sizing: border-box;
       
-      /* 🌟 修正：Adobe Fonts の「TA恋心」の正確な指定に変更 */
       font-family: ta-koigokoro, sans-serif;
-      /* 🌟 修正：印刷時(17pt/297mm)と比率を完全一致させるフォントサイズ計算（便箋幅の約2.02%） */
-      font-size: 2.02cqi;
+      
+      /* 🌟 修正1：サンプル画面の文字を少し小さくしました（元 2.02cqi） */
+      /* ※さらに小さくしたい場合は 1.6 や 1.5 に、大きくしたい場合は 1.8 などに変更してください */
+      font-size: 1.7cqi;
+      
       color: #000000;
       line-height: 1.7;
       word-break: break-all;
@@ -149,10 +151,10 @@
       width: 16em; /* 横16文字分 */
       max-width: 100%;
       
-      /* 画面上の位置調整：印刷時の位置（147mm/33mm）と同期 */
+      /* 画面上の位置調整 */
       position: absolute;
-      top: 70%;      /* 147mm ÷ 210mm = 70% */
-      left: 11.11%;  /* 33mm ÷ 297mm = 約11.11% */
+      top: 70%;      
+      left: 11.11%;  
     }
 
     /* 🖨️ A4横向き専用 印刷設定 */
@@ -198,7 +200,10 @@
         padding-right: 50mm;
         padding-bottom: 20mm;
         
-        font-size: 17pt;   
+        /* 🌟 修正2：印刷時の文字を太字にする設定を追加 */
+        font-weight: bold;
+        
+        font-size: 17pt;   /* サイズはそのまま */
         line-height: 1.7; 
         
         -webkit-print-color-adjust: exact;
