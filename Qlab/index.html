@@ -1,489 +1,294 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>QLab Operations Simulator</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
-        
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #000;
-            color: #fff;
-            margin: 0;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            touch-action: manipulation;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QLab Simulator (Advanced)</title>
+<style>
+  body { margin: 0; font-family: sans-serif; background-color: #1a1a1a; color: white; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+  
+  /* 舞台状況エリア */
+  #stage-monitor { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; background-color: #000; border-bottom: 2px solid #333; padding: 20px; text-align: center; position: relative; overflow: hidden; }
+  #stage-visual { font-size: 28px; font-weight: bold; margin-bottom: 10px; color: #4CAF50; transition: color 0.3s; }
+  #stage-audio { font-size: 18px; color: #aaa; }
+  
+  /* 下部UIラッパー (スマホUI + 横のベルボタン) */
+  #bottom-area { flex: 2; display: flex; position: relative; justify-content: center; align-items: center; background-color: #1a1a1a; }
+  
+  /* スマホUIエリア */
+  #phone-ui { max-width: 400px; width: 100%; height: 95%; background-color: #222; padding: 10px; box-sizing: border-box; display: flex; flex-direction: column; border-radius: 20px; border: 2px solid #444; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
+  
+  /* ヘッダー＆リセットボタン */
+  .header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .header { background-color: #a020f0; text-align: center; padding: 6px; font-size: 12px; font-weight: bold; border-radius: 5px; flex: 1; margin-right: 10px; }
+  .btn-reset { background-color: #555; color: white; border: 1px solid #777; border-radius: 5px; padding: 6px 12px; font-size: 12px; font-weight: bold; cursor: pointer; }
+  .btn-reset:active { background-color: #333; }
 
-        /* 上部: 舞台状況画面 */
-        #stage-view {
-            flex: 0 0 35vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            background-color: #222;
-            transition: background-color 0.5s ease;
-            position: relative;
-            padding: 1rem;
-            text-align: center;
-        }
-        #stage-view.blackout {
-            background-color: #000;
-        }
-        .stage-title {
-            font-size: 1rem;
-            color: #888;
-            margin-bottom: 0.5rem;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-        #stage-status {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: #fff;
-        }
-        #stage-substatus {
-            font-size: 1rem;
-            color: #aaa;
-            margin-top: 0.5rem;
-        }
+  /* タイマー表示 */
+  #timer-display { text-align: center; font-size: 32px; font-family: monospace; font-weight: bold; background: #000; color: #ff3b30; border: 2px solid #ff3b30; border-radius: 8px; margin-bottom: 10px; padding: 5px; box-shadow: 0 0 10px #ff3b30; letter-spacing: 2px; }
 
-        /* 下部: スマホUI */
-        #controller-area {
-            flex: 1;
-            display: flex;
-            justify-content: center;
-            align-items: flex-end;
-            background-color: #111;
-            padding-bottom: 2vh;
-        }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; flex: 1; }
+  
+  /* ボタン共通スタイル */
+  .btn { background-color: #444; border: 1px solid #666; border-radius: 8px; padding: 15px 10px; display: flex; flex-direction: column; justify-content: flex-start; cursor: pointer; user-select: none; position: relative; overflow: hidden; transition: background-color 0.2s; }
+  .btn.stripe { background: repeating-linear-gradient(45deg, #444, #444 10px, #333 10px, #333 20px); color: #888; border-color: #444; cursor: not-allowed; }
+  .btn.stripe .btn-desc { opacity: 0.5; }
+  
+  .btn.active { border-color: #fff; background-color: #666; } /* 選択/トグル状態 */
+  .btn-title { font-size: 14px; font-weight: bold; margin-bottom: 5px; pointer-events: none; }
+  .btn-desc { font-size: 11px; background: white; color: black; padding: 2px 5px; border-radius: 3px; display: inline-block; pointer-events: none; }
+  
+  /* GOボタン特化 */
+  .btn-go { background-color: #ffd700; color: #000; border: none; justify-content: center; align-items: center; cursor: pointer; }
+  .btn-go:active { background-color: #ccac00; transform: scale(0.98); }
+  .btn-go .btn-title { font-size: 24px; }
+  
+  .icon-top-right { position: absolute; top: 10px; right: 10px; font-size: 14px; }
 
-        .smartphone {
-            width: 100%;
-            max-width: 400px;
-            height: 60vh;
-            background-color: #1c1c1e;
-            border-radius: 40px;
-            border: 8px solid #333;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-            overflow: hidden;
-        }
+  /* ベルボタン (横の黒い空間に配置) */
+  #bell-btn { position: absolute; right: calc(50% - 280px); /* スマホ画面の右横あたり */ width: 80px; height: 80px; background-color: #000; border: 3px solid #ff3b30; border-radius: 50%; box-shadow: 0 0 15px #ff3b30, inset 0 0 15px #ff3b30; color: #ff3b30; font-weight: bold; font-size: 14px; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; user-select: none; transition: transform 0.1s, box-shadow 0.1s; }
+  #bell-btn:active { transform: scale(0.9); box-shadow: 0 0 30px #ff3b30, inset 0 0 30px #ff3b30; background-color: #200; }
+  #bell-btn::before { content: 'BELL'; margin-bottom: 5px; }
+  
+  /* ベル鳴動エフェクト */
+  .bell-effect { position: absolute; font-size: 70px; color: yellow; text-shadow: 0 0 20px orange; animation: floatUpFadeOut 1.5s forwards; pointer-events: none; }
+  @keyframes floatUpFadeOut {
+    0% { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-100px) scale(1.5); }
+  }
 
-        /* スマホ上部ノッチ */
-        .notch {
-            position: absolute;
-            top: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 120px;
-            height: 25px;
-            background-color: #333;
-            border-bottom-left-radius: 15px;
-            border-bottom-right-radius: 15px;
-            z-index: 10;
-        }
-
-        /* QLab風 ヘッダー */
-        .qlab-header {
-            background-color: #1c1c1e;
-            padding: 35px 15px 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #333;
-        }
-        .qlab-header-title {
-            font-weight: 800;
-            font-size: 1.1rem;
-        }
-        .qlab-subheader {
-            background-color: #8a2be2; /* Purple */
-            color: white;
-            font-size: 0.75rem;
-            text-align: center;
-            padding: 4px 0;
-            font-weight: 600;
-        }
-
-        /* QLab風 グリッドボタン */
-        .qlab-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            padding: 10px;
-            flex: 1;
-            overflow-y: auto;
-        }
-
-        .q-btn {
-            background-color: #2c2c2e;
-            border: 2px solid #444;
-            border-radius: 12px;
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
-            position: relative;
-            user-select: none;
-            cursor: pointer;
-            min-height: 80px;
-            transition: opacity 0.1s, transform 0.1s;
-        }
-        .q-btn:active {
-            opacity: 0.7;
-            transform: scale(0.98);
-        }
-
-        /* 斜線パターン (画像のボタンを再現) */
-        .pattern-hatch {
-            background: repeating-linear-gradient(
-                -45deg,
-                #2c2c2e,
-                #2c2c2e 8px,
-                #3a3a3c 8px,
-                #3a3a3c 10px
-            );
-        }
-
-        .btn-title {
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: #eee;
-            margin-bottom: 4px;
-        }
-        .btn-desc {
-            font-size: 0.75rem;
-            color: #aaa;
-            line-height: 1.2;
-        }
-
-        .icon-top-right {
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            font-size: 1rem;
-            color: #888;
-        }
-
-        /* GO ボタンの特別スタイル */
-        .btn-go {
-            background-color: #ffd700;
-            border-color: #ffea00;
-            color: #000;
-        }
-        .btn-go .btn-title, .btn-go .btn-desc {
-            color: #000;
-        }
-        .btn-go .icon-top-right {
-            color: #000;
-        }
-
-        /* アラート・自動進行プログレス */
-        #auto-progress {
-            height: 4px;
-            background-color: #8a2be2;
-            width: 0%;
-            transition: width linear;
-        }
-    </style>
+  /* スマホ等で画面幅が狭い場合はベルボタンを右上に逃がす */
+  @media (max-width: 600px) {
+    #bell-btn { right: 10px; top: 10px; width: 60px; height: 60px; font-size: 10px; }
+  }
+</style>
 </head>
 <body>
 
-    <!-- 舞台状況画面 (STAGE VIEW) -->
-    <div id="stage-view">
-        <div class="stage-title">Stage Status</div>
-        <div id="stage-status">準備中...</div>
-        <div id="stage-substatus">待機</div>
-        <div id="light-indicator" class="absolute top-4 right-4 text-xs font-bold px-2 py-1 rounded bg-yellow-500 text-black">Light: ON</div>
+<div id="stage-monitor">
+  <div id="stage-visual">【待機画面】</div>
+  <div id="stage-audio">🎵 入場中BGM 再生中</div>
+</div>
+
+<div id="bottom-area">
+  <div id="phone-ui">
+    <div class="header-bar">
+      <div class="header">Show Mode - OSC Access: View, Control</div>
+      <button class="btn-reset" onclick="resetSim()">RESET</button>
     </div>
-    <div id="auto-progress"></div>
+    
+    <!-- 追加: タイマー -->
+    <div id="timer-display">70:00</div>
 
-    <!-- コントローラー画面 (SMARTPHONE UI) -->
-    <div id="controller-area">
-        <div class="smartphone">
-            <div class="notch"></div>
-            
-            <div class="qlab-header">
-                <span class="text-purple-500">⚙</span>
-                <span class="text-gray-400">💡</span>
-                <div class="qlab-header-title">Control</div>
-                <span class="text-gray-400">⌖</span>
-                <span class="text-gray-400">≡</span>
-            </div>
-            <div class="qlab-subheader">
-                Show Mode - OSC Access: View, Control
-            </div>
-
-            <div class="qlab-grid">
-                <!-- 左1: light -->
-                <div class="q-btn pattern-hatch" onclick="toggleLight()">
-                    <span class="icon-top-right">▶</span>
-                    <div class="btn-title">light · 暗転</div>
-                    <div class="btn-desc bg-white text-black px-1 mt-2 inline-block rounded font-bold text-[0.65rem]">電気のONOFF</div>
-                </div>
-                
-                <!-- 右1: Now -->
-                <div class="q-btn">
-                    <span class="icon-top-right">💬</span>
-                    <div class="btn-title" style="color:#aaa;">Now · <span id="ui-now" class="text-white font-bold">--</span></div>
-                    <div class="btn-desc mt-1">今の流れているキュー</div>
-                </div>
-
-                <!-- 左2: success -->
-                <div class="q-btn pattern-hatch" onclick="selectRoute('成功')">
-                    <span class="icon-top-right">▶</span>
-                    <div class="btn-title">success · 成功選択</div>
-                    <div class="btn-desc bg-white text-black px-1 mt-2 inline-block rounded font-bold text-[0.65rem]">成功ルートへ</div>
-                </div>
-
-                <!-- 右2: Next -->
-                <div class="q-btn">
-                    <span class="icon-top-right">💬</span>
-                    <div class="btn-title" style="color:#aaa;">Next · <span id="ui-next" class="text-white font-bold">--</span></div>
-                    <div class="btn-desc mt-1">次のキュー</div>
-                </div>
-
-                <!-- 左3: falled -->
-                <div class="q-btn pattern-hatch" onclick="selectRoute('失敗')">
-                    <span class="icon-top-right">▶</span>
-                    <div class="btn-title">falled · 失敗選択</div>
-                    <div class="btn-desc bg-white text-black px-1 mt-2 inline-block rounded font-bold text-[0.65rem]">失敗ルートへ</div>
-                </div>
-
-                <!-- 右3: select status -->
-                <div class="q-btn">
-                    <span class="icon-top-right">💬</span>
-                    <div class="btn-title" style="color:#aaa;">select · <span id="ui-select" class="text-white font-bold">未選択</span></div>
-                    <div class="btn-desc mt-1">現在の選択状況</div>
-                </div>
-
-                <!-- 左4: Timecall -->
-                <div class="q-btn pattern-hatch" onclick="stopTimer()">
-                    <span class="icon-top-right">▶</span>
-                    <div class="btn-title">Timecall · ｽﾄｯﾌﾟ</div>
-                    <div class="btn-desc bg-white text-black px-1 mt-2 inline-block rounded font-bold text-[0.65rem]">ｶｳﾝﾄ止めたい時</div>
-                </div>
-
-                <!-- 右4: GO -->
-                <div class="q-btn btn-go flex items-center justify-center text-center" onclick="handleGo()">
-                    <span class="icon-top-right">❖</span>
-                    <div class="btn-title text-2xl mb-1">GO</div>
-                    <div class="btn-desc font-bold">次へ進む</div>
-                </div>
-            </div>
-        </div>
+    <div class="grid">
+      <div id="btn-light" class="btn stripe" onclick="toggleLight()">
+        <div class="icon-top-right">▶</div>
+        <div class="btn-title">light・暗転</div>
+        <div class="btn-desc">電気のONOFF</div>
+      </div>
+      <div class="btn">
+        <div class="icon-top-right">💬</div>
+        <div class="btn-title">Now・<span id="ui-now">客入れ</span></div>
+        <div class="btn-desc">今の流れているキュー</div>
+      </div>
+      
+      <div id="btn-success" class="btn stripe" onclick="selectRoute('success')">
+        <div class="icon-top-right">▶</div>
+        <div class="btn-title">success・成功選択</div>
+        <div class="btn-desc">ボタンでもここでも</div>
+      </div>
+      <div class="btn">
+        <div class="icon-top-right">💬</div>
+        <div class="btn-title">Next・<span id="ui-next">3回ベル</span></div>
+        <div class="btn-desc">次のを確認したいね</div>
+      </div>
+      
+      <div id="btn-falled" class="btn stripe" onclick="selectRoute('falled')">
+        <div class="icon-top-right">▶</div>
+        <div class="btn-title">falled・失敗選択</div>
+        <div class="btn-desc">ボタンでもここでも</div>
+      </div>
+      <div class="btn">
+        <div class="icon-top-right">💬</div>
+        <div class="btn-title">select・未選択</div>
+        <div class="btn-desc">ここはわからない</div>
+      </div>
+      
+      <div id="btn-timecall" class="btn stripe" onclick="toggleTimecall()">
+        <div class="icon-top-right">▶</div>
+        <div class="btn-title">Timecall・ストップ</div>
+        <div class="btn-desc">3分以下で機能</div>
+      </div>
+      <div class="btn btn-go" onclick="fireGo()">
+        <div class="btn-title">GO</div>
+        <div class="btn-desc">いつものGO</div>
+      </div>
     </div>
+  </div>
 
-    <script>
-        // 状態管理
-        let state = {
-            currentCueId: '0',
-            route: null, // '成功' or '失敗'
-            isDark: false,
-            autoTimeoutId: null,
-            timerActive: false
-        };
+  <!-- 横の黒い空間に置くベルボタン -->
+  <div id="bell-btn" onclick="ringBell()">🔔</div>
+</div>
 
-        // キューリストの定義
-        // type: 'manual' (GOで進む), 'auto' (自動で進む)
-        const cues = {
-            '0': { title: '客入れ', stage: '入場中BGM再生 / 待機画面', type: 'manual', next: '1' },
-            '1': { title: 'プレイヤーが3回ベルを鳴らしたら', stage: 'S1OP_1018.mp4 映像再生中', type: 'auto', delay: 3000, next: '2' },
-            '2': { title: '映像終わり', stage: 'ラジオ音声再生', type: 'manual', next: '3' },
-            '3': { title: 'モカ「わたしモカっていいます」', stage: 'ナレーション1 再生', type: 'auto', delay: 5000, next: '4' },
-            '4': { title: 'ナレーション終わり', stage: 'ラジオ音声 (通常音量)', type: 'manual', next: '5' },
-            '5': { title: 'モカドリンク飲んでガクンとなる', stage: 'ナレーション2 再生', type: 'manual', next: '6' },
-            '6': { title: 'モカ「私は……だれ？」', stage: 'S1OP_タイトル 映像再生', type: 'manual', next: '7' },
-            '7': { title: 'タイトル映像終わり', stage: 'タイマースタート / ラジオ', type: 'manual', next: '8', onEnter: () => startTimer() },
-            '8': { title: '着信', stage: '📱 着信音 SE', type: 'manual', next: '9' },
-            '9': { title: '電話切る', stage: '着信音 停止', type: 'manual', next: '10' },
-            '10': { title: 'Hint1', stage: 'ヒント音声再生', type: 'manual', next: '11' },
-            '11': { title: 'タイムリープ説明', stage: '画像：タイムリープ説明', type: 'manual', next: '12' },
-            '12': { title: 'タイムスリップ説明', stage: '画像：タイムスリップ説明', type: 'manual', next: '12.5' },
-            '12.5': { title: '画面戻す', stage: '待機画面', type: 'manual', next: '15' },
-            '15': { title: 'モカ「時空移動開始」', stage: '🌀 タイムリープ1 SE', type: 'manual', next: '16', onEnter: () => setDark(true) },
-            '16': { title: '転換終わったら', stage: 'タイマー再開', type: 'manual', next: '17', onEnter: () => setDark(false) },
-            '17': { title: '着信 (2回目)', stage: '📱 着信音 SE', type: 'manual', next: '18' },
-            '18': { title: '電話切る', stage: '着信音 停止', type: 'manual', next: '19' },
-            '19': { title: 'モカ「時空移動開始」', stage: '🌀 タイムリープ2 SE', type: 'manual', next: '20', onEnter: () => setDark(true) },
-            '20': { title: '転換終わったら', stage: 'タイマー再開', type: 'manual', next: '21', onEnter: () => setDark(false) },
-            '21': { title: 'アロマストップ', stage: '💣 時限爆弾 SE', type: 'manual', next: '22' },
-            '22': { title: '着信 (3回目)', stage: '📱 着信音 SE', type: 'manual', next: '23' },
-            '23': { title: '電話切る', stage: '着信音 停止', type: 'manual', next: '24' },
-            '24': { title: 'モカ「えいっ」', stage: '画像・SE', type: 'manual', next: '25' },
-            '25': { title: 'モカ語り', stage: 'モカ音声 (爆弾SEフェード)', type: 'manual', next: '26' },
-            '26': { title: 'モカ語り終わり', stage: '最終BGM 再生中 (ルート選択待機)', type: 'manual', branch: true },
-            
-            // 失敗ルート
-            '31': { title: '失敗', stage: '失敗映像 (S3A_1017) 再生', type: 'auto', delay: 5000, next: '33' },
-            '33': { title: '再チャレンジ', stage: 'モカ情報 画像表示', type: 'manual', next: '34' },
-            '34': { title: '時空移動', stage: '🌀 タイムスリップ SE', type: 'manual', next: '35', onEnter: () => setDark(true) },
-            '35': { title: '転換終了', stage: 'BGM / 録音開始', type: 'manual', next: '36', onEnter: () => setDark(false) },
-            '36': { title: '録音終了', stage: '録音停止', type: 'auto', delay: 500, next: '37' },
-            '37': { title: '成功音声', stage: '音声再生', type: 'manual', next: '39' },
-            '39': { title: '最後のセリフ前に', stage: 'BGMフェード', type: 'auto', delay: 5000, next: '51' },
+<script>
+  // キューリスト (timer: start/runで動く, pause/stopで止まる。 light/select: trueの時だけ斜線が外れて操作可能)
+  const cues = [
+    { now: "客入れ", next: "3回ベル", visual: "【待機画面】", audio: "🎵 入場中BGM", timer: "stop", light: false, select: false },
+    { now: "3回ベル", next: "モカ「わたし…」", visual: "【OP映像 再生中】", audio: "🔈 OP音声", timer: "stop", light: false, select: false },
+    { now: "モカ「わたし…」", next: "タイトル終わり", visual: "【待機画面(暗転)】", audio: "🗣️ ラジオ音声 / ナレーション", timer: "stop", light: false, select: false },
+    { now: "タイトル終わり", next: "着信", visual: "【タイトル映像 再生中】", audio: "🔈 映像音声 (タイマースタート)", timer: "start", light: true, select: false },
+    { now: "着信", next: "電話切る", visual: "【待機画面】", audio: "📱 携帯着信音 鳴動中", timer: "run", light: true, select: false },
+    { now: "電話切る", next: "Hint1", visual: "【待機画面】", audio: "📱 着信音停止", timer: "run", light: true, select: false },
+    { now: "Hint1", next: "時空移動開始", visual: "【待機画面】", audio: "🗣️ ヒント音声再生", timer: "pause", light: true, select: false },
+    { now: "時空移動開始", next: "転換完了", visual: "【暗転】", audio: "🌀 タイムリープ演出中...", timer: "pause", light: false, select: false },
+    { now: "転換完了", next: "アロマストップ", visual: "【待機画面】", audio: "🎵 タイマー・ラジオ再開", timer: "run", light: false, select: false },
+    { now: "アロマストップ", next: "着信2", visual: "【待機画面】", audio: "💣 時限爆弾SE", timer: "run", light: false, select: true },
+    { now: "着信2", next: "電話切る2", visual: "【待機画面】", audio: "📱 着信音 鳴動中", timer: "run", light: false, select: true },
+    { now: "電話切る2", next: "モカ「えいっ」", visual: "【待機画面】", audio: "📱 着信音停止", timer: "run", light: false, select: true },
+    { now: "モカ「えいっ」", next: "モカ語り", visual: "【モカ情報 画像表示】", audio: "🗣️ えいっSE", timer: "run", light: false, select: true },
+    { now: "モカ語り", next: "モカ語り終", visual: "【モカ情報 画像表示】", audio: "🗣️ モカ語り音声", timer: "run", light: false, select: true },
+    { now: "モカ語り終", next: "分岐待機", visual: "【待機画面】", audio: "🎵 最終BGM (ルートを選択してください)", timer: "run", light: false, select: false },
+    // 以下は分岐先のキュー
+    { now: "【成功ルート】", next: "転換終わったら", visual: "【成功 タイムスリップ演出】", audio: "🎵 タイマー停止", timer: "pause", light: false, select: false },
+    { now: "【失敗ルート】", next: "時空移動", visual: "【失敗映像 再生中】", audio: "💣 失敗BGM", timer: "pause", light: false, select: false }
+  ];
 
-            // 成功ルート
-            '41': { title: '成功', stage: 'タイマー停止 / 🌀 成功タイムスリップ', type: 'manual', next: '42', onEnter: () => { stopTimer(); setDark(true); } },
-            '42': { title: '転換終わったら', stage: 'BGM / 録音開始', type: 'manual', next: '43', onEnter: () => setDark(false) },
-            '43': { title: '録音音声が終わったら', stage: '録音フェード', type: 'auto', delay: 500, next: '44' },
-            '44': { title: '店員セリフ終わったら', stage: 'ED BGM スタート', type: 'manual', next: '45' },
-            '45': { title: 'モカ「私、ここにきた意味が〜」', stage: '空間歪む SE', type: 'manual', next: '46' },
-            '46': { title: '最後のセリフ前に', stage: 'BGMフェード', type: 'manual', next: '47' },
-            '47': { title: 'モカ「それじゃあ未来で！」', stage: 'エンドロール映像', type: 'auto', delay: 3000, next: '48' },
-            '48': { title: '成功解説', stage: '解説映像', type: 'auto', delay: 3000, next: '51' },
+  let currentCueIndex = 0;
+  let isBlackout = false;
 
-            // 共通ルート
-            '51': { title: 'EDロール終わったら', stage: 'S5ED① 映像', type: 'auto', delay: 3000, next: '52' },
-            '52': { title: 'ふくろう「読みあげてください」', stage: '手紙BGM', type: 'manual', next: '53' },
-            '53': { title: 'ケーキ読み終わり', stage: 'S6ED② 映像', type: 'auto', delay: 3000, next: '54' },
-            '54': { title: '映像終わり', stage: '待機', type: 'manual', next: '54.5' },
-            '54.5': { title: 'グッズ', stage: '画像：商品一覧', type: 'manual', next: '55' },
-            '55': { title: '告知1', stage: '画像：告知1', type: 'manual', next: '56' },
-            '56': { title: '告知2', stage: '画像：告知2', type: 'manual', next: '57' },
-            '57': { title: '告知3', stage: '画像：告知3', type: 'manual', next: '58' },
-            '58': { title: '団員', stage: '画像：団員', type: 'manual', next: '58.5' },
-            '58.5': { title: 'ネタバレライン', stage: '画像：注意事項', type: 'manual', next: '59' },
-            '59': { title: 'コナ「よろしくお願いいたします」', stage: '手紙BGM停止 / S7ED③ 映像', type: 'manual', next: '60' },
-            '60': { title: '客はけ', stage: '客出しBGM / バナー表示', type: 'manual', next: '61' },
-            '61': { title: '転換', stage: '初期化完了', type: 'manual', next: '0', onEnter: () => { stopTimer(); state.route = null; } }
-        };
+  // タイマー関連変数
+  let timerInterval = null;
+  let timeLeft = 70 * 60; // 70分 = 4200秒
+  let userTimePaused = false; // ボタンでの手動ストップ状態
 
-        // UIの更新
-        function updateUI() {
-            const cue = cues[state.currentCueId];
-            
-            // スマホ UI
-            document.getElementById('ui-now').innerText = state.currentCueId === '0' ? '客入れ' : cue.title.substring(0, 10) + '...';
-            document.getElementById('ui-select').innerText = state.route || '未選択';
+  function updateUI() {
+    const cue = cues[currentCueIndex];
+    
+    // Stageの更新
+    const visualEl = document.getElementById('stage-visual');
+    if(isBlackout) {
+      visualEl.innerText = "【完全に暗転】";
+      visualEl.style.color = "#555";
+    } else {
+      visualEl.innerText = cue.visual;
+      visualEl.style.color = "#4CAF50";
+    }
+    document.getElementById('stage-audio').innerText = cue.audio;
+    document.getElementById('ui-now').innerText = cue.now;
+    document.getElementById('ui-next').innerText = cue.next;
 
-            // 次のキュー解決
-            let nextId = cue.next;
-            let nextTitle = '';
-            
-            if (cue.branch) {
-                if (state.route === '成功') nextId = '41';
-                else if (state.route === '失敗') nextId = '31';
-                else nextTitle = '⚠️ ルートを選択してください';
-            }
-            
-            if (!nextTitle && nextId && cues[nextId]) {
-                nextTitle = cues[nextId].title;
-            }
-            document.getElementById('ui-next').innerText = nextTitle.substring(0, 10) + '...';
+    // ボタンの斜線(stripe)制御
+    document.getElementById('btn-light').classList.toggle('stripe', !cue.light);
+    document.getElementById('btn-success').classList.toggle('stripe', !cue.select);
+    document.getElementById('btn-falled').classList.toggle('stripe', !cue.select);
+    
+    updateTimecallButton();
+  }
 
-            // 舞台状況
-            document.getElementById('stage-status').innerText = cue.title;
-            let sub = cue.stage;
-            if (state.timerActive) sub += " ⏱️カウント中";
-            document.getElementById('stage-substatus').innerText = sub;
+  function fireGo() {
+    if (currentCueIndex < 14) { // 分岐前まで
+      currentCueIndex++;
+      isBlackout = false;
+      updateUI();
+    } else if (currentCueIndex === 14) {
+      alert("⚠️ ルート選択（success / falled）を押してください。");
+    } else {
+      alert("シミュレーションはここまでです。Resetを押してください。");
+    }
+  }
+
+  // --- 各種ボタン機能 ---
+  function toggleLight() {
+    if (!cues[currentCueIndex].light) return; // 斜線の時は無効
+    isBlackout = !isBlackout;
+    updateUI();
+  }
+
+  function selectRoute(route) {
+    if (!cues[currentCueIndex].select) return; // 斜線の時は無効
+    if (route === 'success') {
+      currentCueIndex = 15; // 成功用キューへ
+    } else {
+      currentCueIndex = 16; // 失敗用キューへ
+    }
+    isBlackout = false;
+    updateUI();
+  }
+
+  function toggleTimecall() {
+    if (timeLeft > 180) return; // 3分以上なら無効
+    userTimePaused = !userTimePaused;
+    updateTimecallButton();
+  }
+
+  function ringBell() {
+    // ベルエフェクトをStageに発生させる
+    const stage = document.getElementById('stage-monitor');
+    const effect = document.createElement('div');
+    effect.className = 'bell-effect';
+    effect.innerText = '🔔リンッ！';
+    // Stage内でランダムな位置に表示
+    effect.style.left = (Math.random() * 60 + 20) + '%';
+    effect.style.top = (Math.random() * 40 + 30) + '%';
+    stage.appendChild(effect);
+    
+    // 1.5秒後に削除
+    setTimeout(() => { effect.remove(); }, 1500);
+  }
+
+  function resetSim() {
+    currentCueIndex = 0;
+    isBlackout = false;
+    timeLeft = 70 * 60; // 70分に戻す
+    userTimePaused = false;
+    updateTimerDisplay();
+    updateUI();
+  }
+
+  // --- タイマー制御 ---
+  function startEngine() {
+    if (!timerInterval) {
+      timerInterval = setInterval(() => {
+        const cueTimerState = cues[currentCueIndex].timer; // 'run', 'start', 'stop', 'pause'
+        // キューが動く状態で、かつユーザーがストップを押していなければカウントダウン
+        if (!userTimePaused && (cueTimerState === 'run' || cueTimerState === 'start')) {
+          timeLeft -= 1; // 500ms(0.5秒)ごとに1秒減る＝【倍速カウントダウン】
+          if (timeLeft < 0) timeLeft = 0;
+          updateTimerDisplay();
+          updateTimecallButton(); // 3分切った時の解除判定のため
         }
+      }, 500);
+    }
+  }
 
-        // キューの遷移
-        function executeCue(id) {
-            if (state.autoTimeoutId) {
-                clearTimeout(state.autoTimeoutId);
-                state.autoTimeoutId = null;
-                document.getElementById('auto-progress').style.transition = 'none';
-                document.getElementById('auto-progress').style.width = '0%';
-            }
+  function updateTimerDisplay() {
+    const m = Math.floor(timeLeft / 60).toString().padStart(2, '0');
+    const s = (timeLeft % 60).toString().padStart(2, '0');
+    document.getElementById('timer-display').innerText = `${m}:${s}`;
+  }
 
-            if (!cues[id]) return;
-            state.currentCueId = id;
-            const cue = cues[id];
+  function updateTimecallButton() {
+    const btn = document.getElementById('btn-timecall');
+    // 残り3分(180秒)以下なら斜線を外す
+    if (timeLeft <= 180) {
+      btn.classList.remove('stripe');
+    } else {
+      btn.classList.add('stripe');
+    }
+    
+    // 一時停止状態なら色を変えてわかりやすくする
+    if (userTimePaused) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  }
 
-            if (cue.onEnter) cue.onEnter();
-            updateUI();
+  // 初期化と起動
+  updateTimerDisplay();
+  updateUI();
+  startEngine();
+</script>
 
-            // 自動進行の場合
-            if (cue.type === 'auto' && cue.next) {
-                const bar = document.getElementById('auto-progress');
-                // アニメーションリセット
-                setTimeout(() => {
-                    bar.style.transition = `width ${cue.delay}ms linear`;
-                    bar.style.width = '100%';
-                }, 50);
-
-                state.autoTimeoutId = setTimeout(() => {
-                    bar.style.transition = 'none';
-                    bar.style.width = '0%';
-                    executeCue(cue.next);
-                }, cue.delay);
-            }
-        }
-
-        // GOボタンのアクション
-        function handleGo() {
-            const cue = cues[state.currentCueId];
-            let nextId = cue.next;
-
-            if (cue.branch) {
-                if (state.route === '成功') nextId = '41';
-                else if (state.route === '失敗') nextId = '31';
-                else {
-                    alert("ルート（成功・失敗）を先に選択してください");
-                    return;
-                }
-            }
-
-            if (nextId) {
-                // 自動進行中に手動でGOを押した場合はスキップする
-                executeCue(nextId);
-            }
-        }
-
-        // ルート選択
-        function selectRoute(r) {
-            state.route = r;
-            updateUI();
-        }
-
-        // 照明トグル (暗転)
-        function toggleLight() {
-            state.isDark = !state.isDark;
-            setDark(state.isDark);
-        }
-
-        function setDark(isDark) {
-            state.isDark = isDark;
-            const sv = document.getElementById('stage-view');
-            const ind = document.getElementById('light-indicator');
-            if (isDark) {
-                sv.classList.add('blackout');
-                ind.innerText = 'Light: OFF (暗転)';
-                ind.classList.replace('bg-yellow-500', 'bg-gray-800');
-                ind.classList.replace('text-black', 'text-white');
-            } else {
-                sv.classList.remove('blackout');
-                ind.innerText = 'Light: ON';
-                ind.classList.replace('bg-gray-800', 'bg-yellow-500');
-                ind.classList.replace('text-white', 'text-black');
-            }
-        }
-
-        // タイムコール
-        function startTimer() {
-            state.timerActive = true;
-            updateUI();
-        }
-        function stopTimer() {
-            state.timerActive = false;
-            updateUI();
-        }
-
-        // 初期化
-        window.onload = function() {
-            executeCue('0');
-        }
-    </script>
 </body>
 </html>
