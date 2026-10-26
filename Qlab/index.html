@@ -3,31 +3,49 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>QLab Simulator (Full Setup)</title>
+<title>QLab Simulator (Update)</title>
 <style>
   body { margin: 0; font-family: sans-serif; background-color: #1a1a1a; color: white; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
   
   /* 舞台状況エリア */
-  #stage-monitor { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; background-color: #000; border-bottom: 2px solid #333; padding: 20px; text-align: center; position: relative; overflow: hidden; }
+  #stage-monitor { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; background-color: #2a2a2a; border-bottom: 2px solid #333; padding: 20px; text-align: center; position: relative; overflow: hidden; transition: background-color 0.5s, background 0.5s; }
+  
+  /* 暗転時の背景 */
+  #stage-monitor.blackout { background-color: #000 !important; }
+  
+  /* 時空移動中の点滅アニメーション */
+  #stage-monitor.spacetime { animation: spacetime-anim 4s infinite; }
+  @keyframes spacetime-anim {
+    0%   { background-color: #eeeeee; }
+    33%  { background-color: #4a90e2; }
+    66%  { background-color: #ff69b4; }
+    100% { background-color: #eeeeee; }
+  }
   
   /* 上部に配置するUI（リセット＆タイマー） */
   #top-bar { position: absolute; top: 15px; left: 15px; right: 15px; display: flex; justify-content: space-between; align-items: flex-start; z-index: 10; }
   .btn-reset { background-color: #555; color: white; border: 1px solid #777; border-radius: 5px; padding: 8px 15px; font-size: 14px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.5); }
   .btn-reset:active { background-color: #333; }
-  #timer-display { text-align: center; font-size: 32px; font-family: monospace; font-weight: bold; background: rgba(0,0,0,0.7); color: #ff3b30; border: 2px solid #ff3b30; border-radius: 8px; padding: 5px 15px; box-shadow: 0 0 10px #ff3b30; letter-spacing: 2px; }
-  .spacer { width: 80px; } /* レイアウトバランス用 */
-
-  #stage-visual { font-size: 28px; font-weight: bold; margin-bottom: 10px; color: #4CAF50; transition: color 0.3s; z-index: 5; }
-  #stage-audio { font-size: 18px; color: #aaa; z-index: 5; }
   
-  /* 下部UIラッパー (スマホUI + 横のベルボタン) */
+  /* シンプルなタイマーに変更 */
+  #timer-display { text-align: center; font-size: 28px; font-family: monospace; font-weight: bold; background: rgba(0,0,0,0.6); color: #fff; border: 1px solid #777; border-radius: 6px; padding: 5px 12px; letter-spacing: 2px; }
+  .spacer { width: 80px; } 
+
+  #stage-visual { font-size: 28px; font-weight: bold; margin-bottom: 10px; color: #4CAF50; transition: color 0.3s; z-index: 5; text-shadow: 1px 1px 2px #000; }
+  #stage-audio { font-size: 18px; color: #ddd; z-index: 5; text-shadow: 1px 1px 2px #000; }
+  
+  /* 下部UIラッパー */
   #bottom-area { flex: 2; display: flex; position: relative; justify-content: center; align-items: center; background-color: #1a1a1a; padding: 10px; }
   
   /* スマホUIエリア */
   #phone-ui { max-width: 400px; width: 100%; height: 98%; background-color: #222; padding: 10px; box-sizing: border-box; display: flex; flex-direction: column; border-radius: 20px; border: 2px solid #444; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
   
-  .header { background-color: #a020f0; text-align: center; padding: 6px; font-size: 12px; font-weight: bold; border-radius: 5px; margin-bottom: 12px; }
+  .header { background-color: #a020f0; text-align: center; padding: 6px; font-size: 12px; font-weight: bold; border-radius: 5px; margin-bottom: 8px; }
   
+  /* 自動進行のプログレスバー */
+  #auto-progress-container { width: 100%; height: 6px; background: #111; margin-bottom: 12px; border-radius: 3px; overflow: hidden; opacity: 0; transition: opacity 0.2s; }
+  #auto-progress-bar { height: 100%; width: 0%; background: #4CAF50; }
+
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; flex: 1; }
   
   /* ボタン共通スタイル */
@@ -48,17 +66,17 @@
   
   .icon-top-right { position: absolute; top: 10px; right: 10px; font-size: 14px; }
 
-  /* ベルボタン (横の黒い空間に配置・正方形に変更) */
+  /* ベルボタン (正方形) */
   #bell-btn { position: absolute; right: calc(50% - 290px); width: 85px; height: 85px; background-color: #000; border: 3px solid #ff3b30; border-radius: 12px; box-shadow: 0 0 15px #ff3b30, inset 0 0 15px #ff3b30; color: #ff3b30; font-weight: bold; font-size: 14px; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; user-select: none; transition: transform 0.1s, box-shadow 0.1s; }
   #bell-btn:active { transform: scale(0.9); box-shadow: 0 0 30px #ff3b30, inset 0 0 30px #ff3b30; background-color: #200; }
   #bell-btn::before { content: 'BELL'; margin-bottom: 5px; font-size: 16px; }
   
   /* カランコロン エフェクト */
-  .bell-effect { position: absolute; font-size: 36px; font-weight: bold; color: yellow; text-shadow: 0 0 20px orange, 2px 2px 0px #000; animation: floatUpFadeOut 1.5s forwards; pointer-events: none; z-index: 20; }
+  .bell-effect { position: absolute; font-size: 32px; font-weight: bold; color: #ffeb3b; text-shadow: 0 0 10px #ff9800, 2px 2px 0px #000; animation: floatUpFadeOut 1.5s forwards; pointer-events: none; z-index: 20; }
   @keyframes floatUpFadeOut {
     0% { opacity: 1; transform: translateY(0) scale(1) rotate(-5deg); }
-    50% { transform: translateY(-50px) scale(1.2) rotate(5deg); }
-    100% { opacity: 0; transform: translateY(-100px) scale(1.5) rotate(-5deg); }
+    50% { transform: translateY(-30px) scale(1.1) rotate(5deg); }
+    100% { opacity: 0; transform: translateY(-60px) scale(1.2) rotate(-5deg); }
   }
 
   @media (max-width: 650px) {
@@ -83,6 +101,11 @@
 <div id="bottom-area">
   <div id="phone-ui">
     <div class="header">Show Mode - OSC Access: View, Control</div>
+    <!-- 自動進行時のプログレスバー -->
+    <div id="auto-progress-container">
+      <div id="auto-progress-bar"></div>
+    </div>
+
     <div class="grid">
       <div id="btn-light" class="btn stripe" onclick="toggleLight()">
         <div class="icon-top-right">▶</div>
@@ -127,18 +150,19 @@
     </div>
   </div>
 
+  <!-- 横の正方形ベルボタン -->
   <div id="bell-btn" onclick="ringBell()">🔔</div>
 </div>
 
 <script>
-  // 全キューデータ（autoが設定されているキューは、指定ミリ秒後に自動でnextCueへ進む）
+  // キューリスト
   const cueData = {
     "0": { now: "0 客入れ", next: "1 3回ベル", visual: "【待機画面】", audio: "🎵 入場中BGM", timer: "stop", light: false, select: false, nextCue: "1" },
     "1": { now: "1 3回ベル", next: "2 映像終わり(自動)", visual: "【OP映像 再生中】", audio: "🔈 OP音声", timer: "stop", light: false, select: false, auto: 3000, nextCue: "2" },
-    "2": { now: "2 映像終わり", next: "3 モカ「わたし…」", visual: "【待機画面(暗転)】", audio: "🗣️ ラジオ音声", timer: "stop", light: false, select: false, nextCue: "3" },
-    "3": { now: "3 モカ「わたし…」", next: "4 ナレ終わり(自動)", visual: "【待機画面(暗転)】", audio: "🗣️ ナレーション1", timer: "stop", light: false, select: false, auto: 2500, nextCue: "4" },
-    "4": { now: "4 ナレ終わり", next: "5 ガクンとなる", visual: "【待機画面(暗転)】", audio: "🗣️ ラジオ音声戻る", timer: "stop", light: false, select: false, nextCue: "5" },
-    "5": { now: "5 ガクンとなる", next: "6 私はだれ？", visual: "【待機画面(暗転)】", audio: "🗣️ ナレーション2", timer: "stop", light: false, select: false, nextCue: "6" },
+    "2": { now: "2 映像終わり", next: "3 モカ「わたし…」", visual: "【待機画面】", audio: "🗣️ ラジオ音声", timer: "stop", light: false, select: false, nextCue: "3" },
+    "3": { now: "3 モカ「わたし…」", next: "4 ナレ終わり(自動)", visual: "【待機画面】", audio: "🗣️ ナレーション1", timer: "stop", light: false, select: false, auto: 2500, nextCue: "4" },
+    "4": { now: "4 ナレ終わり", next: "5 ガクンとなる", visual: "【待機画面】", audio: "🗣️ ラジオ音声戻る", timer: "stop", light: false, select: false, nextCue: "5" },
+    "5": { now: "5 ガクンとなる", next: "6 私はだれ？", visual: "【待機画面】", audio: "🗣️ ナレーション2", timer: "stop", light: false, select: false, nextCue: "6" },
     "6": { now: "6 私はだれ？", next: "7 タイトル終わり(自動)", visual: "【タイトル映像 再生中】", audio: "🔈 映像音声", timer: "stop", light: false, select: false, auto: 3000, nextCue: "7" },
     "7": { now: "7 タイトル終わり", next: "8 着信", visual: "【待機画面】", audio: "🎵 ラジオ (タイマースタート)", timer: "start", light: true, select: false, nextCue: "8" },
     "8": { now: "8 着信", next: "9 電話切る", visual: "【待機画面】", audio: "📱 携帯着信音 鳴動中", timer: "run", light: true, select: false, nextCue: "9" },
@@ -147,11 +171,12 @@
     "11": { now: "11 リープ説明", next: "12 スリップ説明", visual: "【タイムリープ説明画像】", audio: "🎵 ラジオ音声", timer: "run", light: true, select: false, nextCue: "12" },
     "12": { now: "12 スリップ説明", next: "12.5 画面戻す", visual: "【タイムスリップ説明画像】", audio: "🎵 ラジオ音声", timer: "run", light: true, select: false, nextCue: "12.5" },
     "12.5": { now: "12.5 画面戻す", next: "15 時空移動開始", visual: "【待機画面】", audio: "🎵 ラジオ音声", timer: "run", light: true, select: false, nextCue: "15" },
-    "15": { now: "15 時空移動開始", next: "16 転換終わったら", visual: "【暗転】", audio: "🌀 タイムリープ演出", timer: "pause", light: false, select: false, nextCue: "16" },
+    // 15, 19, 34, 41 に effect: 'spacetime' (時空移動エフェクト) を追加
+    "15": { now: "15 時空移動開始", next: "16 転換終わったら", visual: "【時空移動中】", audio: "🌀 タイムリープ演出", timer: "pause", light: false, select: false, effect: "spacetime", nextCue: "16" },
     "16": { now: "16 転換終わったら", next: "17 着信2", visual: "【待機画面】", audio: "🎵 タイマー・ラジオ再開", timer: "run", light: false, select: false, nextCue: "17" },
     "17": { now: "17 着信2", next: "18 電話切る2", visual: "【待機画面】", audio: "📱 携帯着信音 鳴動中", timer: "run", light: false, select: false, nextCue: "18" },
     "18": { now: "18 電話切る2", next: "19 時空移動開始2", visual: "【待機画面】", audio: "📱 着信音停止", timer: "run", light: false, select: false, nextCue: "19" },
-    "19": { now: "19 時空移動開始2", next: "20 転換終わったら2", visual: "【暗転】", audio: "🌀 タイムリープ演出2", timer: "pause", light: false, select: false, nextCue: "20" },
+    "19": { now: "19 時空移動開始2", next: "20 転換終わったら2", visual: "【時空移動中】", audio: "🌀 タイムリープ演出2", timer: "pause", light: false, select: false, effect: "spacetime", nextCue: "20" },
     "20": { now: "20 転換終わったら2", next: "21 アロマストップ", visual: "【待機画面】", audio: "🎵 タイマー・ラジオ再開", timer: "run", light: false, select: false, nextCue: "21" },
     "21": { now: "21 アロマストップ", next: "22 着信3", visual: "【待機画面】", audio: "💣 時限爆弾SEスタート", timer: "run", light: false, select: true, nextCue: "22" },
     "22": { now: "22 着信3", next: "23 電話切る3", visual: "【待機画面】", audio: "📱 着信音 鳴動中", timer: "run", light: false, select: true, nextCue: "23" },
@@ -164,14 +189,14 @@
     // --- 失敗ルート ---
     "31": { now: "31 失敗", next: "33 再チャレンジ(自動)", visual: "【失敗映像 S3A 再生中】", audio: "💣 BGM・SE停止", timer: "pause", light: false, select: false, auto: 2500, nextCue: "33" },
     "33": { now: "33 再チャレンジ", next: "34 時空移動", visual: "【モカ情報 画像】", audio: "🔈 静寂", timer: "pause", light: false, select: false, nextCue: "34" },
-    "34": { now: "34 時空移動", next: "35 転換終了", visual: "【暗転】", audio: "🌀 失敗リープ演出", timer: "pause", light: false, select: false, nextCue: "35" },
+    "34": { now: "34 時空移動", next: "35 転換終了", visual: "【時空移動中】", audio: "🌀 失敗リープ演出", timer: "pause", light: false, select: false, effect: "spacetime", nextCue: "35" },
     "35": { now: "35 転換終了", next: "36 録音終了", visual: "【待機画面】", audio: "🎵 録音開始", timer: "pause", light: false, select: false, nextCue: "36" },
     "36": { now: "36 録音終了", next: "37 成功音声(自動)", visual: "【待機画面】", audio: "🎵 録音終了", timer: "pause", light: false, select: false, auto: 1500, nextCue: "37" },
     "37": { now: "37 成功音声", next: "39 セリフ前", visual: "【待機画面】", audio: "🗣️ 音声再生", timer: "pause", light: false, select: false, nextCue: "39" },
     "39": { now: "39 セリフ前", next: "51 EDロール(自動)", visual: "【待機画面】", audio: "🔈 BGMフェードアウト", timer: "pause", light: false, select: false, auto: 2500, nextCue: "51" },
     
     // --- 成功ルート ---
-    "41": { now: "41 成功", next: "42 転換終わったら", visual: "【暗転】", audio: "🌀 成功リープ演出", timer: "pause", light: false, select: false, nextCue: "42" },
+    "41": { now: "41 成功", next: "42 転換終わったら", visual: "【時空移動中】", audio: "🌀 成功リープ演出", timer: "pause", light: false, select: false, effect: "spacetime", nextCue: "42" },
     "42": { now: "42 転換終わったら", next: "43 録音音声終わり", visual: "【待機画面】", audio: "🎵 BGM・録音開始", timer: "pause", light: false, select: false, nextCue: "43" },
     "43": { now: "43 録音音声終わり", next: "44 店員セリフ(自動)", visual: "【待機画面】", audio: "🔈 録音フェードアウト", timer: "pause", light: false, select: false, auto: 1500, nextCue: "44" },
     "44": { now: "44 店員セリフ", next: "45 モカ「私…」", visual: "【待機画面】", audio: "🎵 ED用BGMスタート", timer: "pause", light: false, select: false, nextCue: "45" },
@@ -205,15 +230,30 @@
   let timeLeft = 70 * 60; // 70分
   let userTimePaused = false;
 
+  function updateStageBackground() {
+    const stageMonitor = document.getElementById('stage-monitor');
+    const cue = cueData[currentCueKey];
+    
+    stageMonitor.classList.remove('spacetime', 'blackout');
+    if (cue.effect === 'spacetime') {
+      stageMonitor.classList.add('spacetime'); // 時空移動アニメ
+    } else if (isBlackout) {
+      stageMonitor.classList.add('blackout'); // 手動暗転
+    }
+  }
+
   function updateUI() {
     clearTimeout(autoTimeout);
     const cue = cueData[currentCueKey];
     
-    // Stage更新
+    // Stage背景の更新
+    updateStageBackground();
+    
+    // Stage文字の更新
     const visualEl = document.getElementById('stage-visual');
     if(isBlackout) {
       visualEl.innerText = "【完全に暗転】";
-      visualEl.style.color = "#555";
+      visualEl.style.color = "#888";
     } else {
       visualEl.innerText = cue.visual;
       visualEl.style.color = "#4CAF50";
@@ -228,8 +268,21 @@
     document.getElementById('btn-falled').classList.toggle('stripe', !cue.select);
     updateTimecallButton();
 
+    // プログレスバーの制御
+    const progressContainer = document.getElementById('auto-progress-container');
+    const progressBar = document.getElementById('auto-progress-bar');
+    progressBar.style.transition = 'none';
+    progressBar.style.width = '0%';
+    progressContainer.style.opacity = '0';
+
     // 自動進行判定
     if (cue.auto) {
+      progressContainer.style.opacity = '1';
+      // リフロー強制（CSSアニメーションを0から確実に走らせるため）
+      void progressBar.offsetWidth;
+      progressBar.style.transition = `width ${cue.auto}ms linear`;
+      progressBar.style.width = '100%';
+
       autoTimeout = setTimeout(() => {
         fireGo(cue.nextCue);
       }, cue.auto);
@@ -242,7 +295,6 @@
       alert("⚠️ ルート選択（success / falled）を押してください。");
       return;
     }
-
     const next = forceNext || cue.nextCue;
     if (cueData[next]) {
       currentCueKey = next;
